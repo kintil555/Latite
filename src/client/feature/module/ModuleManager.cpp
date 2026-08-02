@@ -21,6 +21,7 @@
 #include "modules/game/AutoGG.h"
 #include "modules/game/HiveTranslate.h"
 #include "modules/game/KillNotification.h"
+#include "modules/game/JumpOnDamage.h"
 #include "modules/game/Gyro.h"
 
 #include "modules/visual/Fullbright.h"
@@ -110,6 +111,7 @@ ModuleManager::ModuleManager() {
     this->items.push_back(std::make_shared<BlockGame>());
     this->items.push_back(std::make_shared<SkinStealer>());
     this->items.push_back(std::make_shared<KillNotification>());
+    this->items.push_back(std::make_shared<JumpOnDamage>());
 
     for (auto& mod : items) {
         mod->onInit();
