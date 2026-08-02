@@ -2,6 +2,7 @@
 #include "screens/ClickGUI.h"
 #include "screens/GyroCalibrationScreen.h"
 #include "screens/HUDEditor.h"
+#include "screens/NoticeScreen.h"
 #include "screens/SkinStealerScreen.h"
 
 #include "client/manager/StaticManager.h"
@@ -14,7 +15,7 @@
 #include <atomic>
 
 class ScreenManager : public Listener,
-                      public StaticManager<Screen, ClickGUI, HUDEditor, SkinStealerScreen, GyroCalibrationScreen> {
+                      public StaticManager<Screen, ClickGUI, HUDEditor, SkinStealerScreen, GyroCalibrationScreen, NoticeScreen> {
 public:
     ScreenManager();
 
