@@ -9,7 +9,7 @@ InGamePackChanger::InGamePackChanger()
     : Module("InGamePackChanger",
              L"In-Game Pack Changer",
              L"Ganti resource pack tanpa keluar dari world atau server.",
-             MISC) {
+             GAME) {
 }
 
 void InGamePackChanger::onEnable() {
