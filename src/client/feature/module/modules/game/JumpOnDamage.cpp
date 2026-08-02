@@ -5,11 +5,11 @@
 
 JumpOnDamage::JumpOnDamage()
     : Module("JumpOnDamage", L"Jump On Damage",
-             L"Automatically jumps once when you take damage.", GAME) {
+             L"Automatically jumps once when you take damage.", GAME, nokeybind) {
 
     addSliderSetting("delay", L"Jump Delay",
                      L"Ticks to wait after taking damage before jumping. 0 = instant.",
-                     delay, IntValue(0), IntValue(20), IntValue(1));
+                     this->delay, IntValue(0), IntValue(20), IntValue(1));
 
     listen<TickEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onTick));
     listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onBeforeMove));
@@ -31,13 +31,13 @@ void JumpOnDamage::onTick(Event& evGeneric) {
 
     // Deteksi damage: health turun DAN belum ada jump queued dari hit ini
     if (curHealth < m_lastHealth && !m_jumpQueued) {
-        int d = std::get<IntValue>(delay).value;
+        int d = std::get<IntValue>(this->delay).value;
         if (d <= 0) {
             m_pendingJump = true;
         } else {
             m_jumpTicksLeft = d;
         }
-        m_jumpQueued = true; // kunci: tidak trigger lagi sampai health naik
+        m_jumpQueued = true; // kunci: satu jump per hit event
     }
 
     // Reset kunci saat health naik kembali (threshold 0.5f anti-noise)
