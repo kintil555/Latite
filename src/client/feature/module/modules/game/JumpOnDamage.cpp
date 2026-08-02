@@ -24,7 +24,7 @@ void JumpOnDamage::onTick(Event& evGeneric) {
 
     // Detect rising edge: invulnerableTime naik berarti baru kena damage
     if (curInvul > m_lastInvulTime) {
-        int d = std::get<IntValue>(delay);
+        int d = std::get<IntValue>(delay).value;
         if (d <= 0) {
             m_pendingJump = true;
         } else {
