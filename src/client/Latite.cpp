@@ -135,9 +135,9 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
 #endif
 
 #if defined(LATITE_NIGHTLY)
-    Logger::Info("Latite Client [NIGHTLY] {}", Latite::version);
+    Logger::Info("Ender Client [NIGHTLY] {}", Latite::version);
 #elif defined(LATITE_DEBUG)
-    Logger::Info("Latite Client [DEBUG] {}", Latite::version);
+    Logger::Info("Ender Client [DEBUG] {}", Latite::version);
 #else
     Logger::Info("Latite Client {}", Latite::version);
 #endif
@@ -197,7 +197,7 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         // SDK::internalVers = vers;
     } else {
         std::stringstream ss;
-        ss << "Latite Client does not support your version: " << Latite::get().gameVersion
+        ss << "Ender Client does not support your version: " << Latite::get().gameVersion
            << ". Latite only supports the following versions:\n\n";
 
         for (const auto key : Latite::supportedMinecraftVersions) {
@@ -317,7 +317,7 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
 
     Latite::get().initialize(dll);
 
-    Logger::Info("Initialized Latite Client");
+    Logger::Info("Initialized Ender Client");
     return 0ul;
     END_ERROR_HANDLER
 }
@@ -381,7 +381,7 @@ BOOL WINAPI DllMainImpl(HINSTANCE hinstDLL, // handle to DLL module
         MH_Uninitialize();
 
         hasInjected = false;
-        Logger::Info("Latite Client detached.");
+        Logger::Info("Ender Client detached.");
 
 #ifdef LATITE_CRASH_REPORTING
         DebugExceptionHandler::Uninstall();
@@ -571,11 +571,11 @@ void Latite::threadsafeInit() {
     std::string vstr(this->version);
 
 #if defined(LATITE_NIGHTLY)
-    auto ws = util::StrToWStr("Latite Client [NIGHTLY] " + gameVersion + " " + vstr + "/" + getBuildTimestamp());
+    auto ws = util::StrToWStr("Ender Client [NIGHTLY] " + gameVersion + " " + vstr + "/" + getBuildTimestamp());
 #elif defined(LATITE_DEBUG)
-    auto ws = util::StrToWStr("Latite Client [DEBUG] " + gameVersion + " " + vstr + "/" + getBuildTimestamp());
+    auto ws = util::StrToWStr("Ender Client [DEBUG] " + gameVersion + " " + vstr + "/" + getBuildTimestamp());
 #else
-    auto ws = util::StrToWStr("Latite Client " + vstr);
+    auto ws = util::StrToWStr("Ender Client " + vstr);
 #endif
 
     // app.Title(ws);

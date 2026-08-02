@@ -225,7 +225,7 @@ std::filesystem::path util::GetRoamingPath() {
 }
 
 std::filesystem::path util::GetLatitePath() {
-    return GetRoamingPath() / "Latite";
+    return GetRoamingPath() / "EnderClient";
 }
 
 std::wstring util::StrToWStr(std::string const& s) {

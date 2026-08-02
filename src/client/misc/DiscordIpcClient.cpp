@@ -107,7 +107,7 @@ bool DiscordIpcClient::setActivity(const Activity& activity) {
                                     { "timestamps", { { "start", activity.startTimestamp } } },
                                     { "assets", assets },
                                     { "buttons",
-                                      nlohmann::json::array({ { { "label", "Download Latite Client" },
+                                      nlohmann::json::array({ { { "label", "Download Ender Client" },
                                                                 { "url", "https://discord.gg/zcJfXxKTA4" } } }) } };
 
     if (!sendSetActivity(activityJson)) {
@@ -195,7 +195,7 @@ bool DiscordIpcClient::sendHandshake() {
 bool DiscordIpcClient::sendSetActivity(const nlohmann::json& activity) {
     const nlohmann::json payload = { { "cmd", "SET_ACTIVITY" },
                                      { "args", { { "pid", GetCurrentProcessId() }, { "activity", activity } } },
-                                     { "nonce", std::format("latite-discord-presence-{}", ++nonce) } };
+                                     { "nonce", std::format("ender-discord-presence-{}", ++nonce) } };
 
     return sendFrame(Opcode::Frame, payload);
 }
