@@ -20,6 +20,14 @@
 namespace {
 
 std::filesystem::path findComMojang() {
+    // GDK (pasca migrasi UWP->GDK, MC 1.21.120+): %appdata%\Minecraft Bedrock\users\shared\games\com.mojang
+    wchar_t roamingGdk[MAX_PATH]{};
+    if (GetEnvironmentVariableW(L"APPDATA", roamingGdk, MAX_PATH) > 0) {
+        for (auto sub : { L"Minecraft Bedrock", L"Minecraft Bedrock Preview" }) {
+            auto c = std::filesystem::path(roamingGdk) / sub / L"users" / L"shared" / L"games" / L"com.mojang";
+            if (std::filesystem::exists(c)) return c;
+        }
+    }
     wchar_t localApp[MAX_PATH]{};
     if (GetEnvironmentVariableW(L"LOCALAPPDATA", localApp, MAX_PATH) > 0) {
         std::filesystem::path pkgRoot = std::filesystem::path(localApp) / L"Packages";
