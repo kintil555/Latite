@@ -23,27 +23,26 @@ void JumpOnDamage::onTick(Event& evGeneric) {
     if (!healthOpt.has_value()) return;
     float curHealth = healthOpt.value();
 
-    // m_lastHealth = -1 artinya belum diinisialisasi (frame pertama)
+    // Inisialisasi frame pertama
     if (m_lastHealth < 0.f) {
         m_lastHealth = curHealth;
         return;
     }
 
-    // Health turun = kena damage. Hanya trigger jika tidak sedang nunggu reset.
-    if (curHealth < m_lastHealth && !m_waitingForReset) {
-        m_waitingForReset = true;
+    // Deteksi damage: health turun DAN belum ada jump queued dari hit ini
+    if (curHealth < m_lastHealth && !m_jumpQueued) {
         int d = std::get<IntValue>(delay).value;
         if (d <= 0) {
             m_pendingJump = true;
         } else {
             m_jumpTicksLeft = d;
         }
+        m_jumpQueued = true; // kunci: tidak trigger lagi sampai health naik
     }
 
-    // Reset kunci saat health stabil (tidak turun lagi)
-    // Pakai threshold kecil untuk regen natural
-    if (curHealth >= m_lastHealth) {
-        m_waitingForReset = false;
+    // Reset kunci saat health naik kembali (threshold 0.5f anti-noise)
+    if (curHealth >= m_lastHealth + 0.5f) {
+        m_jumpQueued = false;
     }
 
     // Countdown delay
@@ -64,10 +63,10 @@ void JumpOnDamage::onBeforeMove(Event& evGeneric) {
     auto  mic = ev.getMoveInputHandler();
     if (!mic) return;
 
-    mic->rawInputState.jumpDown               = true;
-    mic->rawInputState.jumpInputWasPressed     = true;
-    mic->rawInputState.jumpInputCurrentlyDown  = true;
-    mic->jumping                               = true;
+    mic->rawInputState.jumpDown              = true;
+    mic->rawInputState.jumpInputWasPressed    = true;
+    mic->rawInputState.jumpInputCurrentlyDown = true;
+    mic->jumping                             = true;
 
     m_pendingJump = false;
 }
