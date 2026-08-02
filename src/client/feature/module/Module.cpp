@@ -4,7 +4,7 @@
 void Module::loadConfig(SettingGroup& resolvedGroup) {
     resolvedGroup.forEach([&](std::shared_ptr<Setting> set) {
         this->settings->forEach([&](std::shared_ptr<Setting> modSet) {
-            if (modSet->name() == set->name()) {
+            if (modSet->name() == set->name() && modSet->value->index() == set->resolvedValue.index()) {
                 std::visit(
                     [&](auto&& obj) {
                         *modSet->value = obj;
