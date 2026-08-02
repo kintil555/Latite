@@ -638,6 +638,10 @@
         "client.commands.plugin.unload.unknownPlugin.name": "Unknown plugin {}",
         "client.commands.plugin.startup.name": "Successfully moved plugin folder {} to startup.",
         "client.commands.plugin.startup.error.name": "Cannot find plugin {}",
-        "client.commands.plugin.install.name": "Plugin installed. Do &7{}plugin load &7{}&r to run the plugin.\nThis plugin will load every time you load Minecraft."
+        "client.commands.plugin.install.name": "Plugin installed. Do &7{}plugin load &7{}&r to run the plugin.\nThis plugin will load every time you load Minecraft.",
+        "client.screen.notice.title": "Notice",
+        "client.screen.notice.body": "Latite is a modified, independent client and is not affiliated with or endorsed by Mojang or Microsoft. Use it at your own risk, and only on servers and accounts where third-party clients are allowed.",
+        "client.screen.notice.hint": "Press Enter to continue",
+        "client.screen.notice.close": "I Understand"
     }
 }
