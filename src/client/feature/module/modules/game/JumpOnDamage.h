@@ -17,4 +17,5 @@ private:
     int   m_jumpTicksLeft = 0;
     bool  m_pendingJump   = false;
     bool  m_jumpQueued    = false;
+    bool  m_releasePending = false;
 };

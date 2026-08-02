@@ -63,16 +63,26 @@ void JumpOnDamage::onTick(Event& evGeneric) {
 }
 
 void JumpOnDamage::onBeforeMove(Event& evGeneric) {
-    if (!m_pendingJump) return;
-
     auto& ev  = reinterpret_cast<BeforeMoveEvent&>(evGeneric);
     auto  mic = ev.getMoveInputHandler();
     if (!mic) return;
 
-    mic->rawInputState.jumpDown              = true;
-    mic->rawInputState.jumpInputWasPressed    = true;
-    mic->rawInputState.jumpInputCurrentlyDown = true;
-    mic->jumping                             = true;
+    if (m_pendingJump) {
+        mic->rawInputState.jumpDown              = true;
+        mic->rawInputState.jumpInputWasPressed    = true;
+        mic->rawInputState.jumpInputCurrentlyDown = true;
+        mic->jumping                             = true;
 
-    m_pendingJump = false;
+        m_pendingJump = false;
+        m_releasePending = true;
+        return;
+    }
+
+    // Release the key on the tick right after the tap, so we never leave
+    // jumpDown latched as "held" once the game reads our forced input.
+    if (m_releasePending) {
+        mic->rawInputState.jumpDown              = false;
+        mic->rawInputState.jumpInputCurrentlyDown = false;
+        m_releasePending = false;
+    }
 }
