@@ -9,10 +9,10 @@ public:
     void onBeforeMove(Event& ev);
 
 private:
-    ValueType delay = IntValue(0);
+    ValueType delay = FloatValue(0.f);  // FloatValue agar slider renderer bekerja
 
-    float m_lastHealth    = -1.f;  // -1 = belum init
+    float m_lastHealth    = -1.f;
     int   m_jumpTicksLeft = 0;
     bool  m_pendingJump   = false;
-    bool  m_jumpQueued    = false;  // kunci: satu jump per hit event
+    bool  m_jumpQueued    = false;
 };
