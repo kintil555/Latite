@@ -3,7 +3,6 @@
 #include "client/event/events/TickEvent.h"
 #include "client/event/events/BeforeMoveEvent.h"
 #include "mc/common/world/actor/Actor.h"
-#include "mc/common/client/ClientInstance.h"
 
 JumpOnDamage::JumpOnDamage()
     : Module("JumpOnDamage", L"Jump On Damage",
