@@ -592,6 +592,8 @@ void Latite::threadsafeInit() {
     Latite::getNotifications().push(
         util::FormatWString(LocalizeString::get("client.intro.menubutton"),
                             { util::StrToWStr(util::KeyToString(Latite::get().getMenuKey().value)) }));
+
+    Latite::getScreenManager().showScreen<NoticeScreen>();
 }
 
 static void blockModules(std::string_view moduleName, std::string_view serverName,
