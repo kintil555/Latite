@@ -240,7 +240,7 @@ void PackChangerScreen::onRender(Event& evG) {
 
     lerpScroll += (scroll - lerpScroll) * .18f;
 
-    float W = dc.getSize().width, H = dc.getSize().height;
+    float W = Latite::getRenderer().getScreenSize().width, H = Latite::getRenderer().getScreenSize().height;
     updateLayout(W, H);
 
     // Backdrop
@@ -252,7 +252,7 @@ void PackChangerScreen::onRender(Event& evG) {
 
     // Title
     dc.drawText(titleRect, L"Resource Pack Changer", d2d::Color(0xff, 0xff, 0xff),
-                22.f, DWRITE_FONT_WEIGHT_SEMI_BOLD,
+                Renderer::FontSelection::PrimaryRegular, 22.f,
                 DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
     // Separator
@@ -277,7 +277,7 @@ void PackChangerScreen::onRender(Event& evG) {
         d2d::Rect nameRect = { p.rowRect.left + 8.f, p.rowRect.top,
                                p.toggleRect.left - 6.f, p.rowRect.bottom };
         dc.drawText(nameRect, p.displayName, d2d::Color(0xee,0xee,0xee),
-                    14.f, DWRITE_FONT_WEIGHT_NORMAL,
+                    Renderer::FontSelection::PrimaryRegular, 14.f,
                     DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
         bool togHov = p.toggleRect.contains(mouse);
@@ -286,13 +286,13 @@ void PackChangerScreen::onRender(Event& evG) {
             : (togHov ? d2d::Color(0x55,0x55,0x55) : d2d::Color(0x3a,0x3a,0x3a));
         dc.fillRoundedRectangle(p.toggleRect, togBg, p.toggleRect.getHeight() * .35f);
         dc.drawText(p.toggleRect, p.active ? L"ON" : L"OFF", d2d::Color(0xff,0xff,0xff),
-                    12.f, DWRITE_FONT_WEIGHT_SEMI_BOLD,
+                    Renderer::FontSelection::PrimaryRegular, 12.f,
                     DWRITE_TEXT_ALIGNMENT_CENTER, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
     }
 
     if (packs.empty()) {
         dc.drawText(listRect, L"Tidak ada resource pack ditemukan.",
-                    d2d::Color(0x88,0x88,0x88), 14.f, DWRITE_FONT_WEIGHT_NORMAL,
+                    d2d::Color(0x88,0x88,0x88), Renderer::FontSelection::PrimaryRegular, 14.f,
                     DWRITE_TEXT_ALIGNMENT_CENTER, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
     }
 
@@ -305,7 +305,7 @@ void PackChangerScreen::onRender(Event& evG) {
     dc.fillRoundedRectangle(applyRect, applyCol, 6.f);
     dc.drawText(applyRect,
                 showFB ? (applySuccess ? L"Diterapkan!" : L"Gagal") : L"Terapkan",
-                d2d::Color(0xff,0xff,0xff), 13.f, DWRITE_FONT_WEIGHT_SEMI_BOLD,
+                d2d::Color(0xff,0xff,0xff), Renderer::FontSelection::PrimaryRegular, 13.f,
                 DWRITE_TEXT_ALIGNMENT_CENTER, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 
     // Close button
@@ -313,7 +313,7 @@ void PackChangerScreen::onRender(Event& evG) {
         closeRect.contains(mouse) ? d2d::Color(0x55,0x55,0x55)
                                   : d2d::Color(0x33,0x33,0x33), 6.f);
     dc.drawText(closeRect, L"Tutup", d2d::Color(0xee,0xee,0xee),
-                13.f, DWRITE_FONT_WEIGHT_NORMAL,
+                Renderer::FontSelection::PrimaryRegular, 13.f,
                 DWRITE_TEXT_ALIGNMENT_CENTER, DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
 }
 
