@@ -31,7 +31,20 @@ void ScreenManager::exitCurrentScreen() {
         this->activeScreen->get().resetInputState();
         this->activeScreen->get().setActive(false);
         this->activeScreen = std::nullopt;
-        SDK::ClientInstance::get()->grabCursor();
+
+        // Only grab the cursor when actually in-game (a world is loaded and we
+        // have a local player). Screens like NoticeScreen can be shown right
+        // after inject, before any world exists -- unconditionally grabbing the
+        // cursor here left the mouse hidden on the main menu and caused stray
+        // HUD elements (e.g. the HUD editor's floating "Mod Settings" button) to
+        // render there too, since isCursorGrabbed() is used elsewhere as a proxy
+        // for "currently in gameplay".
+        auto* client = SDK::ClientInstance::get();
+        if (client && client->getLocalPlayer()) {
+            client->grabCursor();
+        } else if (client) {
+            client->releaseCursor();
+        }
     }
 }
 
