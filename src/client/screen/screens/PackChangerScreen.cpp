@@ -4,7 +4,7 @@
 #include "client/event/Eventing.h"
 #include "client/event/events/ClickEvent.h"
 #include "client/event/events/KeyUpdateEvent.h"
-#include "client/event/events/RenderOverlayEvent.h"
+#include "client/event/events/RenderLayerEvent.h"
 #include "client/Latite.h"
 #include "util/DrawContext.h"
 #include "util/Util.h"
@@ -51,7 +51,7 @@ std::filesystem::path findComMojang() {
 // Constructor
 // ============================================================================
 PackChangerScreen::PackChangerScreen() {
-    Eventing::get().listen<RenderOverlayEvent>(this, (EventListenerFunc)&PackChangerScreen::onRender, 1, true);
+    Eventing::get().listen<RenderLayerEvent>(this, (EventListenerFunc)&PackChangerScreen::onRender, 1, true);
     Eventing::get().listen<ClickEvent>(this, (EventListenerFunc)&PackChangerScreen::onClick, 4);
     Eventing::get().listen<KeyUpdateEvent>(this, (EventListenerFunc)&PackChangerScreen::onKey, 1);
 }
@@ -234,8 +234,8 @@ void PackChangerScreen::updateLayout(float W, float H) {
 // Render
 // ============================================================================
 void PackChangerScreen::onRender(Event& evG) {
-    auto& ev = reinterpret_cast<RenderOverlayEvent&>(evG);
-    auto& dc = ev.getDC();
+    auto& ev = reinterpret_cast<RenderLayerEvent&>(evG);
+    MCDrawUtil dc { ev.getUIRenderContext(), Latite::get().getFont() };
     if (dirty) scanPacks();
 
     lerpScroll += (scroll - lerpScroll) * .18f;
@@ -266,7 +266,7 @@ void PackChangerScreen::onRender(Event& evG) {
         dc.fillRoundedRectangle(scrollThumbRect, d2d::Color(0xff, 0xff, 0xff, .22f), 4.f);
 
     // Rows
-    Vec2 mouse = getMousePos();
+    Vec2 mouse = SDK::ClientInstance::get()->cursorPos;
     for (auto const& p : packs) {
         if (p.rowRect.bottom < listRect.top || p.rowRect.top > listRect.bottom) continue;
 
@@ -322,14 +322,14 @@ void PackChangerScreen::onRender(Event& evG) {
 // ============================================================================
 void PackChangerScreen::onClick(Event& evG) {
     auto& ev = reinterpret_cast<ClickEvent&>(evG);
-    Vec2 mouse = getMousePos();
+    Vec2 mouse = SDK::ClientInstance::get()->cursorPos;
 
     // Scroll wheel
     if (ev.getClickType() == ClickEvent::ClickType::Wheel) {
         if (panelRect.contains(mouse) && scrollMax > 0.f) {
             scroll -= ev.getWheelDelta() * 40.f;
             scroll  = std::clamp(scroll, 0.f, scrollMax);
-            ev.cancel();
+            ev.setCancelled();
         }
         return;
     }
@@ -341,27 +341,27 @@ void PackChangerScreen::onClick(Event& evG) {
     if (scrollThumbRect.contains(mouse) && scrollMax > 0.f) {
         draggingBar = true;
         dragOffset  = mouse.y - scrollThumbRect.top;
-        ev.cancel();
+        ev.setCancelled();
         return;
     }
 
     // Close
-    if (closeRect.contains(mouse)) { setActive(false); ev.cancel(); return; }
+    if (closeRect.contains(mouse)) { setActive(false); ev.setCancelled(); return; }
 
     // Apply
-    if (applyRect.contains(mouse)) { applyPacks(); ev.cancel(); return; }
+    if (applyRect.contains(mouse)) { applyPacks(); ev.setCancelled(); return; }
 
     // Toggle pack
     for (auto& p : packs) {
         if (p.toggleRect.contains(mouse)) {
             p.active = !p.active;
-            ev.cancel();
+            ev.setCancelled();
             return;
         }
     }
 
     // Click luar panel
-    if (!panelRect.contains(mouse)) { setActive(false); ev.cancel(); }
+    if (!panelRect.contains(mouse)) { setActive(false); ev.setCancelled(); }
 }
 
 // ============================================================================
@@ -371,7 +371,7 @@ void PackChangerScreen::onKey(Event& evG) {
     auto& ev = reinterpret_cast<KeyUpdateEvent&>(evG);
     if (ev.getKey() == VK_ESCAPE && ev.isDown()) {
         setActive(false);
-        ev.cancel();
+        ev.setCancelled();
     }
     // Scroll via arrow keys
     if (ev.isDown() && scrollMax > 0.f) {
