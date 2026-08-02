@@ -9,10 +9,10 @@ public:
     void onBeforeMove(Event& ev);
 
 private:
-    ValueType delay = IntValue(0);  // slider 0-20 ticks
+    ValueType delay = IntValue(0);
 
-    int  m_lastInvulTime   = 0;
-    int  m_jumpTicksLeft   = 0;
-    bool m_pendingJump     = false;
-    bool m_waitingForReset = false;  // cegah jump berulang dari 1 damage
+    float m_lastHealth     = -1.f;  // -1 = belum init
+    int   m_jumpTicksLeft  = 0;
+    bool  m_pendingJump    = false;
+    bool  m_waitingForReset = false;
 };
