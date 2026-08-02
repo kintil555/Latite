@@ -88,35 +88,35 @@ void Keystrokes::render(DrawUtil& dc, bool, bool inEditor) {
     // + sneak, space, LMB, RMB
 
     // I fucking hate this, but Mojang decided to turn the input states into bits...
-#define CREATE_GET(field) \
-    [&] -> bool {         \
-        return field;     \
-    }
+    //
+    // Fetch the local player / move input component ONCE per frame instead of
+    // dereferencing them inline inside each lambda. getLocalPlayer() can return
+    // nullptr (world loading, respawn, dimension change), and
+    // getMoveInputComponent() -> tryGetComponent() can also return nullptr, since
+    // it does an EnTT registry lookup that isn't guaranteed to succeed every frame.
+    // The previous code called both with zero null-checks, which caused the
+    // 0xC0000005 access violation in Actor::tryGetComponent.
+    auto* localPlayer = SDK::ClientInstance::get()->getLocalPlayer();
+    SDK::MoveInputComponent* moveInput = localPlayer ? localPlayer->getMoveInputComponent() : nullptr;
 
-    static std::array<Stroke, 2> mouseButtons = { Stroke(CREATE_GET(primaryClickState)),
-                                                  Stroke(CREATE_GET(secondaryClickState)) };
+    static std::array<Stroke, 2> mouseButtons = { Stroke([&] { return primaryClickState; }),
+                                                  Stroke([&] { return secondaryClickState; }) };
 
     static std::array<Keystroke, 6> keystrokes = {
-        Keystroke("forward",
-                  CREATE_GET(SDK::ClientInstance::get()->getLocalPlayer()->getMoveInputComponent()->rawInputState.up)),
-        Keystroke(
-            "left",
-            CREATE_GET(SDK::ClientInstance::get()->getLocalPlayer()->getMoveInputComponent()->rawInputState.left)),
-        Keystroke(
-            "back",
-            CREATE_GET(SDK::ClientInstance::get()->getLocalPlayer()->getMoveInputComponent()->rawInputState.down)),
-        Keystroke(
-            "right",
-            CREATE_GET(SDK::ClientInstance::get()->getLocalPlayer()->getMoveInputComponent()->rawInputState.right)),
-        Keystroke(
-            "sneak",
-            CREATE_GET(SDK::ClientInstance::get()->getLocalPlayer()->getMoveInputComponent()->rawInputState.sneakDown)),
-        Keystroke(
-            "jump",
-            CREATE_GET(SDK::ClientInstance::get()->getLocalPlayer()->getMoveInputComponent()->rawInputState.jumpDown))
+        Keystroke("forward", [] { return false; }), Keystroke("left", [] { return false; }),
+        Keystroke("back", [] { return false; }),    Keystroke("right", [] { return false; }),
+        Keystroke("sneak", [] { return false; }),   Keystroke("jump", [] { return false; }),
     };
 
-#undef CREATE_GET
+    // Rebind the getters every frame to point at the current (possibly-null)
+    // moveInput pointer captured above; each getter safely no-ops (returns false)
+    // when moveInput is nullptr instead of crashing.
+    keystrokes[0].getInput = [moveInput] { return moveInput && moveInput->rawInputState.up; };
+    keystrokes[1].getInput = [moveInput] { return moveInput && moveInput->rawInputState.left; };
+    keystrokes[2].getInput = [moveInput] { return moveInput && moveInput->rawInputState.down; };
+    keystrokes[3].getInput = [moveInput] { return moveInput && moveInput->rawInputState.right; };
+    keystrokes[4].getInput = [moveInput] { return moveInput && moveInput->rawInputState.sneakDown; };
+    keystrokes[5].getInput = [moveInput] { return moveInput && moveInput->rawInputState.jumpDown; };
 
     float ls = std::get<FloatValue>(lerpSpeed);
     float lerpT = SDK::ClientInstance::get()->minecraft->timer->alpha * ls;
