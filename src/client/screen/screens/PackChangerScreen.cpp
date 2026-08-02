@@ -240,7 +240,9 @@ void PackChangerScreen::onRender(Event& evG) {
 
     lerpScroll += (scroll - lerpScroll) * .18f;
 
-    float W = Latite::getRenderer().getScreenSize().width, H = Latite::getRenderer().getScreenSize().height;
+    auto* guiData = SDK::ClientInstance::get()->getGuiData();
+    if (!guiData) return;
+    float W = guiData->guiSize.x, H = guiData->guiSize.y;
     updateLayout(W, H);
 
     // Backdrop
