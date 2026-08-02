@@ -13,7 +13,12 @@
 #include <algorithm>
 
 NoticeScreen::NoticeScreen() {
-    Eventing::get().listen<RenderOverlayEvent>(this, (EventListenerFunc)&NoticeScreen::onRender, 1, true);
+    // Priority 11 (higher than Notifications' priority 10) so the disclaimer
+    // panel + background blur are drawn FIRST, and toast notifications are
+    // drawn on top of them afterward. This keeps notifications fully visible
+    // and unblurred even when they appear at the same time as this screen,
+    // instead of being drawn underneath the blur.
+    Eventing::get().listen<RenderOverlayEvent>(this, (EventListenerFunc)&NoticeScreen::onRender, 11, true);
     Eventing::get().listen<ClickEvent>(this, (EventListenerFunc)&NoticeScreen::onClick, 4);
     Eventing::get().listen<KeyUpdateEvent>(this, (EventListenerFunc)&NoticeScreen::onKey);
 }
