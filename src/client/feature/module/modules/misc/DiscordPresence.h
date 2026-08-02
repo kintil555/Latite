@@ -58,7 +58,7 @@ private:
         std::pair<std::string_view, std::string_view> { "BED", "BedWars" },
     };
 
-    const std::string discordApplicationId = "1066896173799047199";
+    const std::string discordApplicationId = "1533392367804088390";
     const std::chrono::seconds presenceCheckInterval { 5 };
     const std::chrono::seconds presenceRefreshInterval { 60 };
     const std::chrono::seconds hiveConnectionRefreshDelay { 3 };
