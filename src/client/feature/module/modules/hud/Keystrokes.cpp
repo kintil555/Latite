@@ -91,13 +91,21 @@ void Keystrokes::render(DrawUtil& dc, bool, bool inEditor) {
     //
     // Fetch the local player / move input component ONCE per frame instead of
     // dereferencing them inline inside each lambda. getLocalPlayer() can return
-    // nullptr (world loading, respawn, dimension change), and
-    // getMoveInputComponent() -> tryGetComponent() can also return nullptr, since
-    // it does an EnTT registry lookup that isn't guaranteed to succeed every frame.
-    // The previous code called both with zero null-checks, which caused the
-    // 0xC0000005 access violation in Actor::tryGetComponent.
+    // nullptr (world loading, respawn, dimension change, or simply being on the
+    // main menu -- HUD modules get a render call every frame regardless of
+    // whether a world is loaded), and getMoveInputComponent() -> tryGetComponent()
+    // can also return nullptr, since it does an EnTT registry lookup that isn't
+    // guaranteed to succeed every frame. The previous code called both with zero
+    // null-checks, which caused the 0xC0000005 access violation in
+    // Actor::tryGetComponent.
     auto* localPlayer = SDK::ClientInstance::get()->getLocalPlayer();
     SDK::MoveInputComponent* moveInput = localPlayer ? localPlayer->getMoveInputComponent() : nullptr;
+
+    // Outside of the HUD editor preview, there's nothing meaningful to show
+    // without a real player (e.g. sitting on the main menu), so skip drawing
+    // entirely instead of rendering empty/placeholder keys. The editor still
+    // needs to render a preview even with no player loaded.
+    if (!inEditor && !moveInput) return;
 
     static std::array<Stroke, 2> mouseButtons = { Stroke([&] { return primaryClickState; }),
                                                   Stroke([&] { return secondaryClickState; }) };
