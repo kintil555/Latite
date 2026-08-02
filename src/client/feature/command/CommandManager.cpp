@@ -14,7 +14,6 @@
 #include "commands/SetPrefixCommand.h"
 #include "commands/ConfigCommand.h"
 #include "commands/SignCommand.h"
-#include "commands/PackCommand.h"
 //
 
 CommandManager::CommandManager() {
@@ -29,7 +28,6 @@ CommandManager::CommandManager() {
     this->items.push_back(std::make_shared<ConfigCommand>());
 #if LATITE_DEBUG
     this->items.push_back(std::make_shared<SignCommand>());
-    this->items.push_back(std::make_shared<PackCommand>());
 #endif
 }
 

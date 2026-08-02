@@ -9,7 +9,6 @@
 #include "modules/misc/DiscordPresence.h"
 #include "modules/misc/BlockGame.h"
 #include "modules/misc/SkinStealer.h"
-#include "modules/misc/InGamePackChanger.h"
 
 #include "modules/game/Zoom.h"
 #include "modules/game/CinematicCamera.h"
@@ -111,7 +110,6 @@ ModuleManager::ModuleManager() {
     this->items.push_back(std::make_shared<FrameTimeDisplay>());
     this->items.push_back(std::make_shared<BlockGame>());
     this->items.push_back(std::make_shared<SkinStealer>());
-    this->items.push_back(std::make_shared<InGamePackChanger>());
     this->items.push_back(std::make_shared<KillNotification>());
     this->items.push_back(std::make_shared<JumpOnDamage>());
 
