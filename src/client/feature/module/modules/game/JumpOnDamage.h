@@ -9,6 +9,8 @@ public:
     void onBeforeMove(Event& ev);
 
 private:
+    int getDelayTicks() const;
+
     ValueType delay = FloatValue(0.f);  // FloatValue agar slider renderer bekerja
 
     float m_lastHealth    = -1.f;

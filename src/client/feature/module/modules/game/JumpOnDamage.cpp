@@ -15,6 +15,16 @@ JumpOnDamage::JumpOnDamage()
     listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onBeforeMove));
 }
 
+int JumpOnDamage::getDelayTicks() const {
+    // Defensive: never assume the active alternative. If the variant was
+    // ever overwritten with a non-FloatValue (e.g. by config/setting
+    // deserialization), fall back to 0 instead of crashing.
+    if (const auto* fv = std::get_if<FloatValue>(&this->delay)) {
+        return static_cast<int>(fv->value);
+    }
+    return 0;
+}
+
 void JumpOnDamage::onTick(Event& evGeneric) {
     auto plr = SDK::ClientInstance::get()->getLocalPlayer();
     if (!plr) return;
@@ -29,7 +39,7 @@ void JumpOnDamage::onTick(Event& evGeneric) {
     }
 
     if (curHealth < m_lastHealth && !m_jumpQueued) {
-        int d = static_cast<int>(std::get<FloatValue>(this->delay).value);
+        int d = getDelayTicks();
         if (d <= 0) {
             m_pendingJump = true;
         } else {
