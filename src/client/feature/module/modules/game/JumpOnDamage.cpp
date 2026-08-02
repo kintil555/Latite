@@ -9,7 +9,7 @@ JumpOnDamage::JumpOnDamage()
 
     addSliderSetting("delay", L"Jump Delay",
                      L"Ticks to wait after taking damage before jumping. 0 = instant.",
-                     this->delay, IntValue(0), IntValue(20), IntValue(1));
+                     this->delay, FloatValue(0.f), FloatValue(20.f), FloatValue(1.f));
 
     listen<TickEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onTick));
     listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onBeforeMove));
@@ -23,29 +23,25 @@ void JumpOnDamage::onTick(Event& evGeneric) {
     if (!healthOpt.has_value()) return;
     float curHealth = healthOpt.value();
 
-    // Inisialisasi frame pertama
     if (m_lastHealth < 0.f) {
         m_lastHealth = curHealth;
         return;
     }
 
-    // Deteksi damage: health turun DAN belum ada jump queued dari hit ini
     if (curHealth < m_lastHealth && !m_jumpQueued) {
-        int d = std::get<IntValue>(this->delay).value;
+        int d = static_cast<int>(std::get<FloatValue>(this->delay).value);
         if (d <= 0) {
             m_pendingJump = true;
         } else {
             m_jumpTicksLeft = d;
         }
-        m_jumpQueued = true; // kunci: satu jump per hit event
+        m_jumpQueued = true;
     }
 
-    // Reset kunci saat health naik kembali (threshold 0.5f anti-noise)
     if (curHealth >= m_lastHealth + 0.5f) {
         m_jumpQueued = false;
     }
 
-    // Countdown delay
     if (m_jumpTicksLeft > 0) {
         m_jumpTicksLeft--;
         if (m_jumpTicksLeft == 0) {
