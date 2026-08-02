@@ -2,15 +2,15 @@
 #include "JumpOnDamage.h"
 #include "client/event/events/TickEvent.h"
 #include "client/event/events/BeforeMoveEvent.h"
-#include "mc/common/world/actor/Actor.h"
 
 JumpOnDamage::JumpOnDamage()
     : Module("JumpOnDamage", L"Jump On Damage",
-             L"Automatically jumps when you take damage.", GAME) {
+             L"Automatically jumps once when you take damage.", GAME) {
 
-    addSetting("delay", L"Jump Delay",
-               L"Ticks to wait after taking damage before jumping (0 = instant).",
-               delay);
+    // Slider: 0 = lompat langsung saat kena hit, lebih tinggi = lebih lambat
+    addSliderSetting("delay", L"Jump Delay",
+                     L"Ticks to wait after taking damage before jumping. 0 = instant.",
+                     delay, IntValue(0), IntValue(20), IntValue(1));
 
     listen<TickEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onTick));
     listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onBeforeMove));
@@ -22,8 +22,11 @@ void JumpOnDamage::onTick(Event& evGeneric) {
 
     int curInvul = plr->invulnerableTime;
 
-    // Detect rising edge: invulnerableTime naik berarti baru kena damage
-    if (curInvul > m_lastInvulTime) {
+    // Rising edge: invulnerableTime naik = baru kena damage
+    // m_waitingForReset memastikan tidak trigger lagi sampai invulTime
+    // sudah turun ke 0 dulu (damage baru)
+    if (curInvul > m_lastInvulTime && !m_waitingForReset) {
+        m_waitingForReset = true;  // kunci sampai damage berikutnya
         int d = std::get<IntValue>(delay).value;
         if (d <= 0) {
             m_pendingJump = true;
@@ -32,6 +35,12 @@ void JumpOnDamage::onTick(Event& evGeneric) {
         }
     }
 
+    // Reset kunci ketika invulTime sudah habis (siap terima damage baru)
+    if (curInvul == 0) {
+        m_waitingForReset = false;
+    }
+
+    // Countdown delay
     if (m_jumpTicksLeft > 0) {
         m_jumpTicksLeft--;
         if (m_jumpTicksLeft == 0) {
@@ -49,11 +58,10 @@ void JumpOnDamage::onBeforeMove(Event& evGeneric) {
     auto  mic = ev.getMoveInputHandler();
     if (!mic) return;
 
-    // Set semua flag jump di rawInputState dan MoveInputComponent
-    mic->rawInputState.jumpDown            = true;
-    mic->rawInputState.jumpInputWasPressed  = true;
-    mic->rawInputState.jumpInputCurrentlyDown = true;
-    mic->jumping                            = true;
+    mic->rawInputState.jumpDown               = true;
+    mic->rawInputState.jumpInputWasPressed     = true;
+    mic->rawInputState.jumpInputCurrentlyDown  = true;
+    mic->jumping                               = true;
 
-    m_pendingJump = false;
+    m_pendingJump = false;  // reset - hanya jump sekali
 }

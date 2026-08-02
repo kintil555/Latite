@@ -9,10 +9,10 @@ public:
     void onBeforeMove(Event& ev);
 
 private:
-    // Delay dalam tick setelah kena damage sebelum jump (0 = langsung)
-    ValueType delay = IntValue(0);
+    ValueType delay = IntValue(0);  // slider 0-20 ticks
 
-    int  m_lastInvulTime  = 0;  // invulnerableTime tick sebelumnya
-    int  m_jumpTicksLeft  = 0;  // countdown sebelum trigger jump
-    bool m_pendingJump    = false;
+    int  m_lastInvulTime   = 0;
+    int  m_jumpTicksLeft   = 0;
+    bool m_pendingJump     = false;
+    bool m_waitingForReset = false;  // cegah jump berulang dari 1 damage
 };
