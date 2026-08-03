@@ -108,7 +108,10 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
         Vec3 closest = bb.closestPoint(eyePos);
         float dist = eyePos.distance(closest);
 
-        bool inReach = dist <= maxReach && bb.intersectsRay(eyePos, viewDir, maxReach).has_value();
+        // Small expand tolerance (matches WAILA's approach) — a zero-tolerance
+        // ray test misses mobs constantly due to per-frame float precision on
+        // the interpolated/rebased box, even when visually on the hitbox.
+        bool inReach = dist <= maxReach && bb.intersectsRay(eyePos, viewDir, maxReach, 0.1f).has_value();
 
         // Not actually hittable right now (still in hit-invulnerability
         // window from a prior hit) — never show as "in reach" even if the
