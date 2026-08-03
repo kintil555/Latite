@@ -49,13 +49,9 @@ HitIndicator::HitIndicator()
     addSliderSetting("reach", LocalizeString::get("client.module.hitIndicator.reach.name"),
                      LocalizeString::get("client.module.hitIndicator.reach.desc"), reach, FloatValue(1.f),
                      FloatValue(6.f), FloatValue(0.05f));
-    addSetting("requireCrosshair", LocalizeString::get("client.module.hitIndicator.requireCrosshair.name"),
-               LocalizeString::get("client.module.hitIndicator.requireCrosshair.desc"), requireCrosshair);
     addSetting("transparent", LocalizeString::get("client.module.hitIndicator.transparent.name"),
                LocalizeString::get("client.module.hitIndicator.transparent.desc"), transparent,
                Setting::Condition("style", Setting::Condition::EQUALS, { style_fullBox }));
-    addSetting("items", LocalizeString::get("client.module.hitIndicator.items.name"),
-               LocalizeString::get("client.module.hitIndicator.items.desc"), items);
 
     Eventing::get().listen<RenderLevelEvent, &HitIndicator::onRenderLevel>(this);
 }
@@ -73,7 +69,6 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
 
     float alpha = SDK::ClientInstance::get()->minecraft->timer->alpha;
     float maxReach = std::get<FloatValue>(reach);
-    bool needCrosshair = std::get<BoolValue>(requireCrosshair);
 
     // Eye position, interpolated the same way entity positions are, so the
     // distance check matches what's actually rendered this frame.
@@ -94,7 +89,7 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
     for (const auto entt : level->getRuntimeActorList()) {
         if (entt->isInvisible()) continue;
         if (entt == lp) continue;
-        if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
+        if (entt->getEntityTypeID() == 64) continue;
 
         Vec3 newPos = {
             std::lerp(entt->getPosOld().x, entt->getPos().x, alpha),
@@ -113,11 +108,14 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
         Vec3 closest = bb.closestPoint(eyePos);
         float dist = eyePos.distance(closest);
 
-        bool inReach = dist <= maxReach;
+        bool inReach = dist <= maxReach && bb.intersectsRay(eyePos, viewDir, maxReach).has_value();
 
-        if (inReach && needCrosshair) {
-            inReach = bb.intersectsRay(eyePos, viewDir, maxReach).has_value();
-        }
+        // Not actually hittable right now (still in hit-invulnerability
+        // window from a prior hit) — never show as "in reach" even if the
+        // crosshair is on the hitbox and distance is fine.
+        auto health = entt->getHealth();
+        bool isHittable = entt->invulnerableTime <= 0 && (!health.has_value() || health.value() > 0.f);
+        inReach = inReach && isHittable;
 
         auto boxCol = (inReach ? std::get<ColorValue>(inReachColor) : std::get<ColorValue>(outOfReachColor))
                           .getMainColor();

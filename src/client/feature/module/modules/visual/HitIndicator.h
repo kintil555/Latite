@@ -16,9 +16,7 @@ private:
     ValueType inReachColor = ColorValue(1.f, 0.f, 0.f, 1.f);
     ValueType outOfReachColor = ColorValue(1.f, 1.f, 1.f, 1.f);
 
-    ValueType requireCrosshair = BoolValue(false);
     ValueType transparent = BoolValue(false);
 
     ValueType reach = FloatValue(3.f);
-    ValueType items = BoolValue(false);
 };
