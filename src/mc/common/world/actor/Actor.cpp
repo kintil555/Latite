@@ -155,7 +155,9 @@ SDK::AttributesComponent* SDK::Actor::getAttributesComponent() {
 }
 
 SDK::AttributeInstance* SDK::Actor::getAttribute(SDK::Attribute& attribute) {
-    return getAttributesComponent()->baseAttributes.getInstance(attribute.mIDValue);
+    auto component = getAttributesComponent();
+    if (!component) return nullptr;
+    return component->baseAttributes.getInstance(attribute.mIDValue);
 }
 
 std::optional<float> SDK::Actor::getHealth() {
