@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "HitIndicator.h"
 #include <util/DrawUtil3D.h>
+#include <mc/common/world/level/HitResult.h>
 
 namespace {
     // 12-edge wireframe only (no quad faces) — a thinner "outline" look
@@ -29,6 +30,22 @@ namespace {
         dc.drawLine(corners[1], corners[5], color);
         dc.drawLine(corners[2], corners[6], color);
         dc.drawLine(corners[3], corners[7], color);
+    }
+
+    // Same approach as WAILA::rayDirectionFromHit — the game's own HitResult
+    // already carries the exact eye-ray origin/direction it uses for block
+    // interaction, so reuse it instead of reconstructing eye position/view
+    // direction by hand (which was drifting off from what's actually on
+    // screen and made the crosshair-vs-hitbox test unreliable).
+    Vec3 rayDirectionFromHit(SDK::HitResult* hit) {
+        if (!hit) return {};
+
+        Vec3 toHit = hit->hitPos - hit->start;
+        if (hit->hitType != SDK::HitType::AIR && toHit.magnitude() > 0.001f) {
+            return toHit.normalized();
+        }
+
+        return hit->end.normalized();
     }
 }
 
@@ -70,21 +87,17 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
     float alpha = SDK::ClientInstance::get()->minecraft->timer->alpha;
     float maxReach = std::get<FloatValue>(reach);
 
-    // Eye position, interpolated the same way entity positions are, so the
-    // distance check matches what's actually rendered this frame.
-    Vec3 eyePos = {
-        std::lerp(lp->getPosOld().x, lp->getPos().x, alpha),
-        std::lerp(lp->getPosOld().y, lp->getPos().y, alpha) + (lp->getPos().y - lp->getBoundingBox().lower.y),
-        std::lerp(lp->getPosOld().z, lp->getPos().z, alpha)
-    };
+    // Use the game's own hit-result ray (same one WAILA/ReachDisplay rely
+    // on) instead of reconstructing eye position/view direction by hand —
+    // that reconstruction didn't line up with what's actually on screen,
+    // which is why the box wasn't turning red even when the crosshair was
+    // visibly on the hitbox.
+    auto hitResult = level->getHitResult();
+    if (hitResult == nullptr) return;
 
-    float calcYaw = (lp->getRot().y + 90.f) * (pi_f / 180.f);
-    float calcPitch = lp->getRot().x * -(pi_f / 180.f);
-    Vec3 viewDir = {
-        cos(calcYaw) * cos(calcPitch),
-        sin(calcPitch),
-        sin(calcYaw) * cos(calcPitch)
-    };
+    Vec3 eyePos = hitResult->start;
+    Vec3 viewDir = rayDirectionFromHit(hitResult);
+    if (viewDir.magnitude() <= 0.0001f) return;
 
     for (const auto entt : level->getRuntimeActorList()) {
         if (entt->isInvisible()) continue;
