@@ -23,6 +23,7 @@
 #include "modules/game/KillNotification.h"
 #include "modules/game/JumpOnDamage.h"
 #include "modules/game/Gyro.h"
+#include "modules/game/InventoryWalk.h"
 
 #include "modules/visual/Fullbright.h"
 #include "modules/visual/MotionBlur.h"
@@ -112,6 +113,7 @@ ModuleManager::ModuleManager() {
     this->items.push_back(std::make_shared<SkinStealer>());
     this->items.push_back(std::make_shared<KillNotification>());
     this->items.push_back(std::make_shared<JumpOnDamage>());
+    this->items.push_back(std::make_shared<InventoryWalk>());
 
     for (auto& mod : items) {
         mod->onInit();
