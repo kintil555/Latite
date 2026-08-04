@@ -20,5 +20,8 @@ private:
 
     float anim = 0.f;
     d2d::Rect panelRect = {};
+    d2d::Rect bodyRect = {};
     d2d::Rect closeButtonRect = {};
+    float scrollOffset = 0.f;
+    float maxScrollOffset = 0.f;
 };
