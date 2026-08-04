@@ -24,12 +24,8 @@ Hitboxes::Hitboxes()
 }
 
 void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
-    auto material = std::get<BoolValue>(transparent) ? SDK::MaterialPtr::getSelectionOverlayMaterial()
-                                                     : SDK::MaterialPtr::getSelectionBoxMaterial();
-
-    auto dc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d, material);
-    auto fallingBlockDc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d,
-                                        SDK::MaterialPtr::getSelectionOverlayMaterial());
+    auto dc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d,
+                            SDK::MaterialPtr::getSelectionOverlayMaterial());
 
     auto lp = SDK::ClientInstance::get()->getLocalPlayer();
     auto level = SDK::ClientInstance::get()->minecraft->getLevel();
@@ -41,8 +37,7 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         if (entt == lp) continue;
         if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
 
-        bool isFallingBlock = entt->getEntityTypeID() == 66;
-        auto& activeDc = isFallingBlock ? fallingBlockDc : fallingBlockDc;
+        auto& activeDc = dc;
 
         Vec3 newPos = {
             std::lerp(entt->getPosOld().x, entt->getPos().x, SDK::ClientInstance::get()->minecraft->timer->alpha),
