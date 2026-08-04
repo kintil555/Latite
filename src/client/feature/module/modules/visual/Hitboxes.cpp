@@ -28,6 +28,8 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
                                                      : SDK::MaterialPtr::getSelectionBoxMaterial();
 
     auto dc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d, material);
+    auto fallingBlockDc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d,
+                                        SDK::MaterialPtr::getSelectionOverlayMaterial());
 
     auto lp = SDK::ClientInstance::get()->getLocalPlayer();
     auto level = SDK::ClientInstance::get()->minecraft->getLevel();
@@ -38,6 +40,9 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         if (entt->isInvisible()) continue;
         if (entt == lp) continue;
         if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
+
+        bool isFallingBlock = entt->getEntityTypeID() == 66;
+        auto& activeDc = isFallingBlock ? fallingBlockDc : fallingBlockDc;
 
         Vec3 newPos = {
             std::lerp(entt->getPosOld().x, entt->getPos().x, SDK::ClientInstance::get()->minecraft->timer->alpha),
@@ -60,7 +65,7 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         auto lineCol = std::get<ColorValue>(lineColor).getMainColor();
         auto eyeCol = std::get<ColorValue>(eyeColor).getMainColor();
 
-        dc.drawBox(bb, boxCol);
+        activeDc.drawBox(bb, boxCol);
         float eyePos = newPos.y;
         float eyeLine = eyePos;
         bool customEyeLine = false;
@@ -70,7 +75,7 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         }
 
         if (std::get<BoolValue>(showEyeLine)) {
-            dc.drawQuad(Vec3(bb.lower.x, eyeLine, bb.lower.z), Vec3(bb.higher.x, eyeLine, bb.lower.z),
+            activeDc.drawQuad(Vec3(bb.lower.x, eyeLine, bb.lower.z), Vec3(bb.higher.x, eyeLine, bb.lower.z),
                         Vec3(bb.higher.x, eyeLine, bb.higher.z), Vec3(bb.lower.x, eyeLine, bb.higher.z), eyeCol);
         }
 
@@ -90,8 +95,8 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
 
             BlockPos bp { static_cast<int>((end.x)), static_cast<int>((end.y)), static_cast<int>((end.z)) };
 
-            dc.drawLine(begin, end, lineCol);
+            activeDc.drawLine(begin, end, lineCol);
         }
-        dc.flush();
+        activeDc.flush();
     }
 }
