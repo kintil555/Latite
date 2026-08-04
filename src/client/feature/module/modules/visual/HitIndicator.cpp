@@ -137,7 +137,7 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
                           .getMainColor();
 
         if (useFullBox) {
-            dc.drawBox(bb, boxCol);
+            dc.drawFullBox(bb, boxCol);
         } else {
             drawWireframe(dc, bb, boxCol);
         }
