@@ -75,7 +75,7 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         // if this entity goes invisible while standing still.
         if (std::get<BoolValue>(ghostHitbox)) {
             Vec3 snappedLower = { std::floor(bb.lower.x), std::floor(bb.lower.y), std::floor(bb.lower.z) };
-            ghostBoxes[runtimeID] = AABB(snappedLower, snappedLower + Vec3(1.f, 1.f, 1.f));
+            ghostBoxes.insert_or_assign(runtimeID, AABB(snappedLower, snappedLower + Vec3(1.f, 1.f, 1.f)));
         }
 
         bool willShowLine =
