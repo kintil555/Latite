@@ -660,7 +660,7 @@
         "client.commands.plugin.startup.error.name": "Cannot find plugin {}",
         "client.commands.plugin.install.name": "Plugin installed. Do &7{}plugin load &7{}&r to run the plugin.\nThis plugin will load every time you load Minecraft.",
         "client.screen.notice.title": "Notice",
-        "client.screen.notice.body": "Latite is a modified, independent client and is not affiliated with or endorsed by Mojang or Microsoft. Use it at your own risk, and only on servers and accounts where third-party clients are allowed.",
+        "client.screen.notice.body": "This client is the result of a small modification of Latite Client, an independent, open-source project. It is not affiliated with or endorsed by Mojang or Microsoft. Use it at your own risk, and only on servers and accounts where third-party clients are allowed.\n\nThis build is distributed under the terms of the GNU General Public License v3.0 (GPLv3), the same license as the original Latite Client. You are free to use, study, modify, and redistribute this software, provided that any redistributed or modified version is also licensed under GPLv3 and its full source code is made available. This software comes with ABSOLUTELY NO WARRANTY, to the extent permitted by applicable law.\n\nFor the full license text, see the LICENSE file included with this client, or the upstream Latite Client repository on GitHub.",
         "client.screen.notice.hint": "Press Enter to continue",
         "client.screen.notice.close": "I Understand"
     }
