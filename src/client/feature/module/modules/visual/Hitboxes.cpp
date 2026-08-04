@@ -42,7 +42,7 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
 
         bool isFallingBlock = entt->getEntityTypeID() == 66;
-        auto& activeDc = isFallingBlock ? fallingBlockDc : dc;
+        auto& activeDc = isFallingBlock ? fallingBlockDc : fallingBlockDc;
 
         Vec3 newPos = {
             std::lerp(entt->getPosOld().x, entt->getPos().x, SDK::ClientInstance::get()->minecraft->timer->alpha),
