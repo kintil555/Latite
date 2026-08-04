@@ -1,5 +1,6 @@
 #pragma once
 #include "../../Module.h"
+#include <unordered_map>
 
 class Hitboxes : public Module {
 public:
@@ -26,4 +27,10 @@ private:
 
     ValueType localPlayer = BoolValue(true);
     ValueType items = BoolValue(true);
+
+    ValueType ghostHitbox = BoolValue(false);
+    ValueType ghostColor = ColorValue(1.f, 1.f, 1.f, 0.5f);
+
+    // Debug: last known block-snapped hitbox per entity, kept while that entity is invisible.
+    std::unordered_map<uint64_t, AABB> ghostBoxes;
 };
