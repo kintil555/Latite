@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Hitboxes.h"
 #include <util/DrawUtil3D.h>
+#include <unordered_set>
 
 Hitboxes::Hitboxes()
     : Module("Hitboxes", LocalizeString::get("client.module.hitboxes.name"),
@@ -19,6 +20,10 @@ Hitboxes::Hitboxes()
                LocalizeString::get("client.module.hitboxes.lookingAt.desc"), this->lineColor, "showLookingAt"_istrue);
     addSetting("items", LocalizeString::get("client.module.hitboxes.items.name"),
                LocalizeString::get("client.module.hitboxes.items.desc"), items);
+    addSetting("ghostHitbox", LocalizeString::get("client.module.hitboxes.ghostHitbox.name"),
+               LocalizeString::get("client.module.hitboxes.ghostHitbox.desc"), ghostHitbox);
+    addSetting("ghostColor", LocalizeString::get("client.module.hitboxes.ghostColor.name"),
+               LocalizeString::get("client.module.hitboxes.ghostColor.desc"), ghostColor, "ghostHitbox"_istrue);
 
     Eventing::get().listen<RenderLevelEvent, &Hitboxes::onRenderLevel>(this);
 }
@@ -32,12 +37,27 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
 
     if (level == nullptr) return;
 
+    std::unordered_set<uint64_t> seenThisFrame;
+
     for (const auto entt : level->getRuntimeActorList()) {
-        if (entt->isInvisible()) continue;
         if (entt == lp) continue;
         if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
 
         auto& activeDc = dc;
+        uint64_t runtimeID = entt->getRuntimeID();
+        if (std::get<BoolValue>(ghostHitbox)) seenThisFrame.insert(runtimeID);
+
+        if (entt->isInvisible()) {
+            if (!std::get<BoolValue>(ghostHitbox)) continue;
+
+            auto cached = ghostBoxes.find(runtimeID);
+            if (cached == ghostBoxes.end()) continue;
+
+            auto ghostCol = std::get<ColorValue>(ghostColor).getMainColor();
+            activeDc.drawBox(cached->second, ghostCol);
+            activeDc.flush();
+            continue;
+        }
 
         Vec3 newPos = {
             std::lerp(entt->getPosOld().x, entt->getPos().x, SDK::ClientInstance::get()->minecraft->timer->alpha),
@@ -50,6 +70,13 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
         Vec3 rebasePos =
             newPos.operator-({ 0.f, eyeOffset, 0.f }).operator+({ 0.f, (bb.higher.y - bb.lower.y) / 2.f, 0.f });
         bb.rebase(rebasePos);
+
+        // Cache a block-snapped 1x1x1 box (flush with the block grid) as the ghost hitbox to show
+        // if this entity goes invisible while standing still.
+        if (std::get<BoolValue>(ghostHitbox)) {
+            Vec3 snappedLower = { std::floor(bb.lower.x), std::floor(bb.lower.y), std::floor(bb.lower.z) };
+            ghostBoxes[runtimeID] = AABB(snappedLower, snappedLower + Vec3(1.f, 1.f, 1.f));
+        }
 
         bool willShowLine =
             std::get<BoolValue>(showLine) &&
@@ -93,5 +120,11 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
             activeDc.drawLine(begin, end, lineCol);
         }
         activeDc.flush();
+    }
+
+    if (std::get<BoolValue>(ghostHitbox)) {
+        for (auto it = ghostBoxes.begin(); it != ghostBoxes.end();) {
+            it = seenThisFrame.contains(it->first) ? std::next(it) : ghostBoxes.erase(it);
+        }
     }
 }
