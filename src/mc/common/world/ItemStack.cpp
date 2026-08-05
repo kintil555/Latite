@@ -10,7 +10,14 @@ SDK::ItemStack* SDK::ItemStack::constructFromBlock(void* storage, SDK::Block con
 
     const auto item = fn(storage, &block, count, userData);
 
-    item->vtable = reinterpret_cast<void**>(Signatures::ItemStackVtable.result);
+    if (Signatures::ItemStackVtable.result) {
+        item->vtable = reinterpret_cast<void**>(Signatures::ItemStackVtable.result);
+    }
+#if LATITE_DEBUG
+    else {
+        Logger::Warn("ItemStackVtable is dead, skipping vtable override (item may be unstable)");
+    }
+#endif
 
     return item;
 }
