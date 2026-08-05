@@ -123,7 +123,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "55 41 57 41 56 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 48 C7 45 ? ? ? ? ? 48 89 CF 48 8D B1 ? ? ? ? 48 8B 81"_sig,
+        "55 56 57 53 48 83 EC ? 48 8D 6C 24 ? 48 C7 45 ? ? ? ? ? 48 89 CE 48 8D 4D ? 66 BA 1A 00 66 41 B8 2A 00 E8 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 85 C0 0F 85"_sig,
         "MinecraftGame::onDeviceLost"
     };
 
@@ -239,7 +239,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "41 57 41 56 41 55 41 54 56 57 55 53 48 81 EC ? ? ? ? 44 0F 29 8C 24 ? ? ? ? 44 0F 29 44 24 ? 0F 29 7C 24 ? 0F 29 74 24 ? 8B 81"_sig,
+        "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC A8 00 00 00 48 8D AC 24 80 00 00 00 44 0F 29 4D 10 44 0F 29 45 00 0F 29 7D F0 0F 29 75 E0 48 C7 45 D8 FE FF FF FF 0F 28 F3 0F 28 FA 44 0F 28 C1 48 89 CE 48 8B 0D ? ? ? ? 48 8B 01 48 8B 40 10"_sig,
         "Tessellator::vertex"
     };
 
