@@ -62,32 +62,32 @@ void PlayerOverlay::onRenderLayer(Event& genericEvent) {
         if (!entt->isPlayer() || entt == lp) continue;
 
         uint64_t runtimeID = entt->getRuntimeID();
-        bool isLive = !entt->isInvisible();
+        if (entt->isInvisible()) continue; // covers only invisible-but-still-loaded case
 
-        // Keep the panel anchored just above where the vanilla nametag would sit.
-        Vec3 livePos = entt->getPos();
-        livePos.y += 0.3f;
+        auto* player = static_cast<SDK::Player*>(entt);
+        std::string const& utf8Name = player->playerName;
+        std::wstring wideName(utf8Name.begin(), utf8Name.end());
 
-        if (isLive) {
-            auto* player = static_cast<SDK::Player*>(entt);
-            std::string const& utf8Name = player->playerName;
-            std::wstring wideName(utf8Name.begin(), utf8Name.end());
-            cache.insert_or_assign(runtimeID, CachedPlayer { wideName, livePos });
-        }
+        Vec3 anchorPos = entt->getPos();
+        anchorPos.y += 0.3f; // sit just above where the vanilla nametag would be
 
-        auto cachedEntry = cache.find(runtimeID);
-        if (cachedEntry == cache.end()) continue; // never seen this player live yet, nothing to draw
+        cache.insert_or_assign(runtimeID, CachedPlayer { wideName, anchorPos, true });
+    }
 
-        Vec3 const& anchorPos = isLive ? livePos : cachedEntry->second.anchorPos;
-        if (anchorPos.distance(lp->getPos()) > maxDist) continue;
+    // Draw from the cache, not from the actor list: a player who fully disappears (out of
+    // simulation range, spectator, disconnected-but-not-cleared, etc.) is no longer present in
+    // getRuntimeActorList() at all, so relying on that loop to draw the frozen panel would mean
+    // it never draws once the actor is gone. The cache is the source of truth for what to render.
+    for (auto& [runtimeID, cached] : cache) {
+        if (cached.anchorPos.distance(lp->getPos()) > maxDist) continue;
 
-        auto screenPos = WorldToScreen::convert(anchorPos);
+        auto screenPos = WorldToScreen::convert(cached.anchorPos);
         if (!screenPos) continue;
 
-        std::wstring const& displayName = cachedEntry->second.name;
-        std::wstring statusLine = isLive ? LocalizeString::get("client.module.playerOverlay.status.live")
-                                          : LocalizeString::get("client.module.playerOverlay.status.lastSeen");
-        auto statusCol = isLive ? liveCol : lastSeenCol;
+        std::wstring statusLine = cached.wasLiveThisFrame
+                                       ? LocalizeString::get("client.module.playerOverlay.status.live")
+                                       : LocalizeString::get("client.module.playerOverlay.status.lastSeen");
+        auto statusCol = cached.wasLiveThisFrame ? liveCol : lastSeenCol;
 
         float panelWidth = 140.f;
         float lineHeight = fontSize + 4.f;
@@ -97,10 +97,12 @@ void PlayerOverlay::onRenderLayer(Event& genericEvent) {
 
         dc.fillRoundedRectangle(panelRect, panelCol, 3.f);
         dc.drawText({ panelRect.left + 6.f, panelRect.top + 3.f, panelRect.right - 6.f, panelRect.top + 3.f + lineHeight },
-                    displayName, nameCol, Renderer::FontSelection::PrimarySemilight, fontSize,
+                    cached.name, nameCol, Renderer::FontSelection::PrimarySemilight, fontSize,
                     DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
         dc.drawText({ panelRect.left + 6.f, panelRect.top + 3.f + lineHeight, panelRect.right - 6.f, panelRect.bottom - 3.f },
                     statusLine, statusCol, Renderer::FontSelection::PrimaryRegular, fontSize * 0.85f,
                     DWRITE_TEXT_ALIGNMENT_LEADING, DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+
+        cached.wasLiveThisFrame = false; // reset; only re-set to true next frame if actor is live again
     }
 }

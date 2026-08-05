@@ -14,6 +14,7 @@ private:
     struct CachedPlayer {
         std::wstring name;
         Vec3 anchorPos;
+        bool wasLiveThisFrame = false;
     };
 
     void onRenderLayer(Event& event);
