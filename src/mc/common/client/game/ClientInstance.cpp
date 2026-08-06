@@ -7,8 +7,11 @@ SDK::ClientInstance* SDK::ClientInstance::instance = nullptr;
 
 SDK::ClientInstance* SDK::ClientInstance::get() {
     if (!instance) {
+        auto* gameCore = Platform_GameCore::get();
+        if (!gameCore) return nullptr;
+
         // IMinecraftGame
-        const auto mcgame = Platform_GameCore::get()->getMinecraftGame();
+        const auto mcgame = gameCore->getMinecraftGame();
         if (!mcgame) {
             return nullptr;
         }

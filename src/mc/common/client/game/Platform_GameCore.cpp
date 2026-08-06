@@ -9,7 +9,7 @@ SDK::GameCore* SDK::Platform_GameCore::getGameCore() {
 }
 
 SDK::Platform_GameCore* SDK::Platform_GameCore::get() {
-    static auto ptr =
-        hat::member_at<Platform_GameCore*>(*reinterpret_cast<void**>(Signatures::Misc::Platform_GameCore.result), 0x8);
-    return ptr;
+    auto* base = *reinterpret_cast<void**>(Signatures::Misc::Platform_GameCore.result);
+    if (!base) return nullptr;
+    return hat::member_at<Platform_GameCore*>(base, 0x8);
 }
