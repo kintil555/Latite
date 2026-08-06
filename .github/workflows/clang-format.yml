@@ -2,7 +2,7 @@ name: Clang Format
 
 on:
   push:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - ".clang-format"
       - ".gitattributes"
@@ -10,7 +10,7 @@ on:
       - "src/**"
       - "tools/**"
   pull_request:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - ".clang-format"
       - ".gitattributes"

@@ -2,7 +2,7 @@ name: Latite Debug
 
 on:
   push:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - "**.cpp"
       - "**.h"
@@ -11,7 +11,7 @@ on:
       - "**.cmake"
       - "assets/lang/**.json"
   pull_request:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - "**.cpp"
       - "**.h"

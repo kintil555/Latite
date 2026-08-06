@@ -2,7 +2,7 @@ name: Latite Nightly
 
 on:
   push:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - "**.cpp"
       - "**.h"
@@ -10,7 +10,7 @@ on:
       - "**CMakeLists.txt"
       - "**.cmake"
   pull_request:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - "**.cpp"
       - "**.h"
