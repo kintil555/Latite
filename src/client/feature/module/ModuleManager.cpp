@@ -65,7 +65,7 @@
 #include "client/event/events/KeyUpdateEvent.h"
 
 ModuleManager::ModuleManager() {
-    // jod-only branch: only JumpOnDamage is registered, no other modules/GUI clutter.
+    // jod-only branch build - only JumpOnDamage is registered, no other modules/GUI clutter.
     this->items.push_back(std::make_shared<JumpOnDamage>());
 
     for (auto& mod : items) {
