@@ -18,6 +18,15 @@ JumpOnDamage::JumpOnDamage()
 
     listen<TickEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onTick));
     listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onBeforeMove));
+
+    // jod-only branch: enabled by default, no manual toggle/GUI needed.
+    setEnabled(true);
+}
+
+void JumpOnDamage::afterLoadConfig() {
+    // jod-only branch: a stale saved config (enabled=false from a prior
+    // build) must not override the always-on default here.
+    if (!isEnabled()) setEnabled(true);
 }
 
 int JumpOnDamage::getTriggerMode() const {

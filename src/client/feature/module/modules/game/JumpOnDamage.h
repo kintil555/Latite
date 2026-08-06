@@ -7,6 +7,7 @@ public:
 
     void onTick(Event& ev);
     void onBeforeMove(Event& ev);
+    void afterLoadConfig() override;
 
 private:
     int getDelayTicks() const;
