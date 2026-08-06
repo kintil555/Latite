@@ -21,6 +21,7 @@ JumpOnDamage::JumpOnDamage()
 
     // jod-only branch: enabled by default, no manual toggle/GUI needed.
     setEnabled(true);
+    Logger::Info("[JOD] constructed, enabled={}", isEnabled());
 }
 
 void JumpOnDamage::afterLoadConfig() {
@@ -44,8 +45,20 @@ int JumpOnDamage::getDelayTicks() const {
 }
 
 void JumpOnDamage::onTick(Event& evGeneric) {
-    auto plr = SDK::ClientInstance::get()->getLocalPlayer();
-    if (!plr) return;
+    static int logThrottle = 0;
+    bool doLog = (++logThrottle % 60 == 0); // ~once every 3s at 20 TPS
+
+    auto* ci = SDK::ClientInstance::get();
+    if (!ci) {
+        if (doLog) Logger::Info("[JOD] ClientInstance::get() is null");
+        return;
+    }
+
+    auto plr = ci->getLocalPlayer();
+    if (!plr) {
+        if (doLog) Logger::Info("[JOD] getLocalPlayer() is null");
+        return;
+    }
 
     bool tookDamage = false;
 
@@ -54,6 +67,7 @@ void JumpOnDamage::onTick(Event& evGeneric) {
         // tick a hit lands, then decays to 0. A 0 -> >0 transition means we
         // just got hit, regardless of whether health actually dropped.
         int invuln = plr->invulnerableTime;
+        if (doLog) Logger::Info("[JOD] mode=hurt invuln={}", invuln);
 
         if (m_lastInvulnTime < 0) {
             m_lastInvulnTime = invuln;
@@ -64,8 +78,12 @@ void JumpOnDamage::onTick(Event& evGeneric) {
         m_lastInvulnTime = invuln;
     } else {
         auto healthOpt = plr->getHealth();
-        if (!healthOpt.has_value()) return;
+        if (!healthOpt.has_value()) {
+            if (doLog) Logger::Info("[JOD] getHealth() returned nullopt");
+            return;
+        }
         float curHealth = healthOpt.value();
+        if (doLog) Logger::Info("[JOD] mode=health cur={} last={}", curHealth, m_lastHealth);
 
         if (m_lastHealth < 0.f) {
             m_lastHealth = curHealth;
@@ -108,11 +126,18 @@ void JumpOnDamage::onTick(Event& evGeneric) {
 }
 
 void JumpOnDamage::onBeforeMove(Event& evGeneric) {
+    static int moveLogThrottle = 0;
+    bool doLog = (++moveLogThrottle % 60 == 0);
+
     auto& ev  = reinterpret_cast<BeforeMoveEvent&>(evGeneric);
     auto  mic = ev.getMoveInputHandler();
-    if (!mic) return;
+    if (!mic) {
+        if (doLog) Logger::Info("[JOD] onBeforeMove: mic is null");
+        return;
+    }
 
     if (m_pendingJump) {
+        Logger::Info("[JOD] forcing jump input this tick");
         mic->rawInputState.jumpDown              = true;
         mic->rawInputState.jumpInputWasPressed    = true;
         mic->rawInputState.jumpInputCurrentlyDown = true;
