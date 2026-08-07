@@ -958,10 +958,14 @@ void Latite::onUpdate(Event& evGeneric) {
         });
     }
 
-    if (std::get<BoolValue>(centerCursorMenus) && SDK::ClientInstance::get()->minecraftGame->isCursorGrabbed()) {
-        RECT r = { 0, 0, 0, 0 };
-        GetClientRect(SDK::GameCore::get()->hwnd, &r);
-        SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+    if (auto* client = SDK::ClientInstance::get()) {
+        if (std::get<BoolValue>(centerCursorMenus) && client->minecraftGame && client->minecraftGame->isCursorGrabbed()) {
+            if (auto* core = SDK::GameCore::get()) {
+                RECT r = { 0, 0, 0, 0 };
+                GetClientRect(core->hwnd, &r);
+                SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+            }
+        }
     }
 
     latiteUsers = latiteUsersDirty;
@@ -985,9 +989,11 @@ void Latite::onUpdate(Event& evGeneric) {
         lastDX11 = std::get<BoolValue>(useDX11);
     }
 
-    rgbHue += SDK::ClientInstance::get()->minecraft->timer->alpha * 0.005f * std::get<FloatValue>(rgbSpeed);
-    if (rgbHue > 1.f) {
-        rgbHue = 0.f;
+    if (auto* client = SDK::ClientInstance::get(); client && client->minecraft && client->minecraft->timer) {
+        rgbHue += client->minecraft->timer->alpha * 0.005f * std::get<FloatValue>(rgbSpeed);
+        if (rgbHue > 1.f) {
+            rgbHue = 0.f;
+        }
     }
 }
 
