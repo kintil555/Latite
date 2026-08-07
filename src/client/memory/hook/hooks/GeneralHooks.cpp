@@ -278,6 +278,16 @@ void __fastcall GenericHooks::CameraViewBob(void* a, void* b, void* c) {
     return ViewBobHook->oFunc<decltype(&CameraViewBob)>()(a, b, c);
 }
 
+// Isolated in its own function (no local C++ objects) because MSVC forbids
+// __try in a function that requires C++ object unwinding (C2712).
+static bool __declspec(noinline) SafeIsClientSide(SDK::Level* obj) {
+    __try {
+        return obj->isClientSide();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+
 bool GenericHooks::Level_initialize(SDK::Level* obj, void* palette, void* settings, void* tickRange, void* experiments,
                                     uint64_t a6) {
     auto o =
@@ -289,13 +299,7 @@ bool GenericHooks::Level_initialize(SDK::Level* obj, void* palette, void* settin
     // null-check below) -- wrap the virtual call itself in a local SEH guard
     // instead of trusting the object is fully constructed here.
     if (obj && *reinterpret_cast<void**>(obj)) {
-        bool isClientSide = false;
-        __try {
-            isClientSide = obj->isClientSide();
-        } __except (EXCEPTION_EXECUTE_HANDLER) {
-            isClientSide = false;
-        }
-        if (isClientSide) {
+        if (SafeIsClientSide(obj)) {
             PluginManager::Event ev { L"join-game", {}, false };
             Latite::getPluginManager().dispatchEvent(ev);
         }
