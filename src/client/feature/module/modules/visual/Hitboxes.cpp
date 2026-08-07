@@ -28,6 +28,20 @@ Hitboxes::Hitboxes()
     Eventing::get().listen<RenderLevelEvent, &Hitboxes::onRenderLevel>(this);
 }
 
+namespace {
+    // Isolated in its own function with no C++ objects requiring unwinding
+    // (no destructors in scope) so __try/__except is legal here (MSVC C2712:
+    // __try cannot be used in a function requiring object unwinding).
+    bool tryGetRuntimeActorList(SDK::Level* level, std::vector<SDK::Actor*>& out) {
+        __try {
+            out = level->getRuntimeActorList();
+            return true;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            return false;
+        }
+    }
+}
+
 void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
     auto dc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d,
                             SDK::MaterialPtr::getSelectionOverlayMaterial());
@@ -45,11 +59,7 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
     // the virtual call in getRuntimeActorList (0xC0000005). Guard the call
     // itself rather than trusting the earlier null-check alone.
     std::vector<SDK::Actor*> actors;
-    __try {
-        actors = level->getRuntimeActorList();
-    } __except (EXCEPTION_EXECUTE_HANDLER) {
-        return;
-    }
+    if (!tryGetRuntimeActorList(level, actors)) return;
 
     for (const auto entt : actors) {
         if (entt == lp) continue;
