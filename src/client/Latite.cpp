@@ -212,6 +212,7 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(LevelRenderer_renderLevel),
         MVSIG(Options_getGamma),
         MVSIG(Options_getPerspective),
+        MVSIG(Options_setPerspective),
         MVSIG(Options_getHideHand),
         MVSIG(ClientInstance_grabCursor),
         MVSIG(ClientInstance_releaseCursor),
@@ -250,7 +251,9 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(ItemStackBase_getDamageValue),
         MVSIG(MinecraftPackets_createPacket),
         MVSIG(Actor_attack),
-        MVSIG(GuiData__addMessage),
+        MVSIG(Actor_getNameTag),
+        MVSIG(Actor_setNameTag),
+        MVSIG(GuiMessageVector_emplaceBack),
         MVSIG(_updatePlayer),
         MVSIG(GameArguments__onUri),
         MVSIG(RenderMaterialGroup__common),
@@ -598,12 +601,13 @@ void Latite::threadsafeInit() {
 
 static void blockModules(std::string_view moduleName, std::string_view serverName,
                          std::string_view featuredServerName = {}) {
-    auto inst = SDK::RakNetConnector::get();
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
 
     std::vector<std::wstring> blockedList;
-    if (inst &&
-        (inst->dns.find(serverName) != std::string::npos || inst->ipAddress.find(serverName) != std::string::npos ||
-         (!featuredServerName.empty() && inst->featuredServer == featuredServerName))) {
+    if (connectionInfo &&
+        (connectionInfo->unresolvedUrl.find(serverName) != std::string::npos ||
+         connectionInfo->hostIpAddress.find(serverName) != std::string::npos ||
+         (!featuredServerName.empty() && connectionInfo->thirdPartyServerInfo.creatorName == featuredServerName))) {
         Latite::getModuleManager().forEach([&](std::shared_ptr<Module> mod) {
             if (!mod->isBlocked()) {
                 if (mod->name() == moduleName) {
@@ -628,10 +632,11 @@ static void blockModules(std::string_view moduleName, std::string_view serverNam
 }
 
 void Latite::updateModuleBlocking() {
-    auto inst = SDK::RakNetConnector::get();
-    if (!inst) return;
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
+    if (!connectionInfo) return;
 
-    if (!inst->dns.empty() || !inst->ipAddress.empty() || !inst->featuredServer.empty()) {
+    if (!connectionInfo->unresolvedUrl.empty() || !connectionInfo->hostIpAddress.empty() ||
+        !connectionInfo->thirdPartyServerInfo.creatorName.empty()) {
         // scuffed but we don't have a proper static management system
 
         static_assert(std::is_base_of_v<Module, Freelook>);
@@ -944,9 +949,9 @@ void Latite::onUpdate(Event& evGeneric) {
         this->clientThreadQueue.pop();
     }
 
-    auto rak = SDK::RakNetConnector::get();
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
 
-    if (!rak || rak->ipAddress.empty()) {
+    if (!connectionInfo || connectionInfo->hostIpAddress.empty()) {
         // updateModuleBlocking();
         getModuleManager().forEach([](std::shared_ptr<Module> mod) {
             mod->setBlocked(false);

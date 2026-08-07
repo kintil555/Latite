@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.22)
 
 project(Latite)
 
@@ -39,6 +39,9 @@ file(GLOB_RECURSE Latite_SRC CONFIGURE_DEPENDS
         "deps/*.h"
         "deps/*.cpp"
 )
+
+# FlipMesh is disabled: FlipMeshAsset.h (its bundled manifest/material data) was never committed.
+list(FILTER Latite_SRC EXCLUDE REGEX ".*/modules/misc/FlipMesh\\.(cpp|h)$")
 
 # Assets
 function(ADD_RESOURCES out_var)

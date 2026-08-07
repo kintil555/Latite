@@ -129,6 +129,23 @@ void MCDrawUtil3D::drawBox(AABB const& bb, d2d::Color const& color) {
              Vec3(bb.higher.x, bb.higher.y, bb.higher.z), Vec3(bb.lower.x, bb.higher.y, bb.higher.z), color);
 }
 
+void MCDrawUtil3D::drawFullBox(AABB const& bb, d2d::Color const& color) {
+    Vec3 const& lo = bb.lower;
+    Vec3 const& hi = bb.higher;
+
+    Vec3 corners[8] = {
+        { lo.x, lo.y, lo.z }, { hi.x, lo.y, lo.z }, { hi.x, lo.y, hi.z }, { lo.x, lo.y, hi.z },
+        { lo.x, hi.y, lo.z }, { hi.x, hi.y, lo.z }, { hi.x, hi.y, hi.z }, { lo.x, hi.y, hi.z },
+    };
+
+    fillQuad(corners[0], corners[1], corners[2], corners[3], color); // bottom
+    fillQuad(corners[4], corners[5], corners[6], corners[7], color); // top
+    fillQuad(corners[0], corners[1], corners[5], corners[4], color); // -Z side
+    fillQuad(corners[1], corners[2], corners[6], corners[5], color); // +X side
+    fillQuad(corners[2], corners[3], corners[7], corners[6], color); // +Z side
+    fillQuad(corners[3], corners[0], corners[4], corners[7], color); // -X side
+}
+
 void MCDrawUtil3D::flush() {
     SDK::MeshHelpers::renderMeshImmediately(screenContext, screenContext->tess, material);
 }

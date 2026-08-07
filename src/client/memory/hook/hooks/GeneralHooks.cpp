@@ -502,7 +502,8 @@ GenericHooks::GenericHooks()
     FogColorHook = addHook(Signatures::Dimension_getSkyColor.result, hkGetFogColor, "Dimension::getFogColor");
     GetTimeOfDayHook = addHook(Signatures::Dimension_getTimeOfDay.result, hkGetTimeOfDay, "Dimension::getTimeOfDay");
     DimensionHook = addHook(Signatures::Dimension_tick.result, hkDimensionTick, "Dimension::tick");
-    AddMessageHook = addHook(Signatures::GuiData__addMessage.result, hkAddMessage, "GuiData::_addMessage");
+    AddMessageHook =
+        addHook(Signatures::GuiMessageVector_emplaceBack.result, hkAddMessage, "std::vector<GuiMessage>::emplace_back");
     UpdatePlayerHook =
         addHook(Signatures::_updatePlayer.result, hkUpdatePlayer, "`anonymous namespace'::_updatePlayer");
     OnUriHook = addHook(Signatures::GameArguments__onUri.result, hkOnUri, "GameArguments::_onUri");

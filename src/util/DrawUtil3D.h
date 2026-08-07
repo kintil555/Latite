@@ -21,5 +21,6 @@ public:
     void drawQuad(Vec3 a, Vec3 b, Vec3 c, Vec3 d, d2d::Color const& col);
     void fillQuad(Vec3 a, Vec3 b, Vec3 c, Vec3 d, d2d::Color const& color);
     void drawBox(AABB const& box, d2d::Color const& color);
+    void drawFullBox(AABB const& box, d2d::Color const& color);
     void flush();
 };

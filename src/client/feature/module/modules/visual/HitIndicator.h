@@ -13,10 +13,10 @@ private:
 
     EnumData style;
 
-    ValueType inReachColor = ColorValue(1.f, 0.f, 0.f, 1.f);
-    ValueType outOfReachColor = ColorValue(1.f, 1.f, 1.f, 1.f);
-
-    ValueType transparent = BoolValue(false);
+    ValueType inReachColor = ColorValue(1.f, 0.f, 0.f, 0.5f);
+    ValueType outOfReachColor = ColorValue(1.f, 1.f, 1.f, 0.5f);
 
     ValueType reach = FloatValue(3.f);
+
+    ValueType transparent = BoolValue(true);
 };
