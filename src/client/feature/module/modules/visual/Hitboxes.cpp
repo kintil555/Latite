@@ -40,7 +40,18 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
 
     std::unordered_set<uint64_t> seenThisFrame;
 
-    for (const auto entt : level->getRuntimeActorList()) {
+    // level can pass the null-check above and still be mid-teardown (e.g. a
+    // leave-game/disconnect racing this render frame), which crashes inside
+    // the virtual call in getRuntimeActorList (0xC0000005). Guard the call
+    // itself rather than trusting the earlier null-check alone.
+    std::vector<SDK::Actor*> actors;
+    __try {
+        actors = level->getRuntimeActorList();
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return;
+    }
+
+    for (const auto entt : actors) {
         if (entt == lp) continue;
         if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
 
