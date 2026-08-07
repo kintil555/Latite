@@ -282,7 +282,12 @@ bool GenericHooks::Level_initialize(SDK::Level* obj, void* palette, void* settin
                                     uint64_t a6) {
     auto o =
         Level_initializeHook->oFunc<decltype(&Level_initialize)>()(obj, palette, settings, tickRange, experiments, a6);
-    if (obj->isClientSide()) {
+    // obj->isClientSide() reads obj's vtable pointer and dispatches through it.
+    // Right as Level::initialize is still unwinding, the object can be in a
+    // state where that vtable pointer isn't installed yet (observed as a
+    // 0xC0000005 jumping straight into game code) -- guard against that
+    // instead of trusting the object is fully constructed here.
+    if (obj && *reinterpret_cast<void**>(obj) && obj->isClientSide()) {
         PluginManager::Event ev { L"join-game", {}, false };
         Latite::getPluginManager().dispatchEvent(ev);
     }
@@ -290,7 +295,7 @@ bool GenericHooks::Level_initialize(SDK::Level* obj, void* palette, void* settin
 }
 
 void* GenericHooks::Level_startLeaveGame(SDK::Level* obj) {
-    if (obj->isClientSide()) {
+    if (obj && *reinterpret_cast<void**>(obj) && obj->isClientSide()) {
         PluginManager::Event ev { L"leave-game", {}, false };
         Latite::getPluginManager().dispatchEvent(ev);
     }
