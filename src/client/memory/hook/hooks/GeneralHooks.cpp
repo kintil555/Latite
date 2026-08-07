@@ -284,12 +284,21 @@ bool GenericHooks::Level_initialize(SDK::Level* obj, void* palette, void* settin
         Level_initializeHook->oFunc<decltype(&Level_initialize)>()(obj, palette, settings, tickRange, experiments, a6);
     // obj->isClientSide() reads obj's vtable pointer and dispatches through it.
     // Right as Level::initialize is still unwinding, the object can be in a
-    // state where that vtable pointer isn't installed yet (observed as a
-    // 0xC0000005 jumping straight into game code) -- guard against that
+    // state where that vtable pointer is non-null but not yet fully installed
+    // (observed as a 0xC0000005 jumping straight into game code even after the
+    // null-check below) -- wrap the virtual call itself in a local SEH guard
     // instead of trusting the object is fully constructed here.
-    if (obj && *reinterpret_cast<void**>(obj) && obj->isClientSide()) {
-        PluginManager::Event ev { L"join-game", {}, false };
-        Latite::getPluginManager().dispatchEvent(ev);
+    if (obj && *reinterpret_cast<void**>(obj)) {
+        bool isClientSide = false;
+        __try {
+            isClientSide = obj->isClientSide();
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            isClientSide = false;
+        }
+        if (isClientSide) {
+            PluginManager::Event ev { L"join-game", {}, false };
+            Latite::getPluginManager().dispatchEvent(ev);
+        }
     }
     return o;
 }
