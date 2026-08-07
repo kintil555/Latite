@@ -47,6 +47,19 @@ namespace {
 
         return hit->end.normalized();
     }
+
+    // level can pass the null-check in onRenderLevel and still be mid-teardown
+    // (leave-game/disconnect, or a fast level transition like joining a
+    // minigame room) when this virtual call runs, crashing with 0xC0000005.
+    // Guard the call itself, same as Hitboxes::tryCallGetRuntimeActorList.
+    bool tryCallGetRuntimeActorList(SDK::Level* level, std::vector<SDK::Actor*>& list) {
+        __try {
+            memory::callVirtual<void, std::vector<SDK::Actor*>&>(level, 0x145, list);
+            return true;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            return false;
+        }
+    }
 }
 
 HitIndicator::HitIndicator()
@@ -99,7 +112,10 @@ void HitIndicator::onRenderLevel(RenderLevelEvent& event) {
     Vec3 viewDir = rayDirectionFromHit(hitResult);
     if (viewDir.magnitude() <= 0.0001f) return;
 
-    for (const auto entt : level->getRuntimeActorList()) {
+    std::vector<SDK::Actor*> actors;
+    if (!tryCallGetRuntimeActorList(level, actors)) return;
+
+    for (const auto entt : actors) {
         if (entt->isInvisible()) continue;
         if (entt == lp) continue;
         if (entt->getEntityTypeID() == 64) continue;
