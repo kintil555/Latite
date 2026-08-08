@@ -3,28 +3,96 @@
 
 #include "client/event/events/ClientTextEvent.h"
 #include "client/event/events/LeaveGameEvent.h"
+#include "client/event/events/UpdateEvent.h"
 #include "client/Latite.h"
+
+#include "mc/common/network/MinecraftPackets.h"
+#include "mc/common/network/packet/CommandRequestPacket.h"
+#include "mc/common/network/RemoteConnectorComposite.h"
 
 #include <cctype>
 
+using namespace std::chrono_literals;
+
+namespace {
+    constexpr std::string_view hiveAddress = "hivebedrock.network";
+    constexpr auto connectionRefreshDelay = 3s;
+    constexpr auto connectionResponseWindow = 20s;
+} // namespace
+
 // This module is intentionally always-on: it is constructed with visible =
 // false (so it never appears in ClickGUI and cannot be disabled by the
-// player) and its listener is registered directly on Eventing in the
+// player) and its listeners are registered directly on Eventing in the
 // constructor rather than through Module::listen(), which normally gates
 // callbacks behind isEnabled(). See Module::isVisible()/ClickGUI.cpp filter.
+//
+// It also polls "/connection" itself (same trick DiscordPresence.cpp uses to
+// learn the current Hive game/hub code) instead of relying on DiscordPresence
+// for that data, since DiscordPresence is a regular toggleable module and
+// could be disabled by the player, which would silently break this warning.
 HideAndSeekCrashWarning::HideAndSeekCrashWarning()
     : Module("HideAndSeekCrashWarning", LocalizeString::get("client.module.hideAndSeekCrashWarning.name"),
              LocalizeString::get("client.module.hideAndSeekCrashWarning.desc"), OTHER, nokeybind, false, false) {
-    Eventing::get().listen<ClientTextEvent, &HideAndSeekCrashWarning::onClientText>(this, 10, true);
-    Eventing::get().listen<LeaveGameEvent, &HideAndSeekCrashWarning::onLeaveGame>(this, 10, true);
+    Eventing::get().listen<UpdateEvent, &HideAndSeekCrashWarning::onUpdate>(this, 0, true);
+    Eventing::get().listen<ClientTextEvent, &HideAndSeekCrashWarning::onClientText>(this, 100, true);
+    Eventing::get().listen<LeaveGameEvent, &HideAndSeekCrashWarning::onLeaveGame>(this, 0, true);
 }
 
 void HideAndSeekCrashWarning::onLeaveGame(LeaveGameEvent&) {
+    activeServerAddress.clear();
+    onHive = false;
     warned = false;
+    connectionRefreshAt = {};
+    suppressUntil = {};
+}
+
+void HideAndSeekCrashWarning::updateConnectionState() {
+    const auto now = std::chrono::steady_clock::now();
+
+    SDK::ClientInstance* clientInstance = SDK::ClientInstance::get();
+    SDK::Social::GameConnectionInfo* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
+
+    std::string serverAddress;
+    if (clientInstance && clientInstance->minecraft && clientInstance->minecraft->getLevel() &&
+        clientInstance->getLocalPlayer() && connectionInfo) {
+        serverAddress = connectionInfo->unresolvedUrl + '\n' + connectionInfo->hostIpAddress + '\n' +
+                        connectionInfo->thirdPartyServerInfo.creatorName;
+    }
+
+    if (serverAddress != activeServerAddress) {
+        activeServerAddress = serverAddress;
+
+        onHive = connectionInfo && (connectionInfo->unresolvedUrl.find(hiveAddress) != std::string::npos ||
+                                    connectionInfo->hostIpAddress.find(hiveAddress) != std::string::npos);
+
+        warned = false;
+        suppressUntil = {};
+        connectionRefreshAt = onHive ? now + connectionRefreshDelay : std::chrono::steady_clock::time_point {};
+    }
+
+    if (connectionRefreshAt == std::chrono::steady_clock::time_point {} || now < connectionRefreshAt || !onHive ||
+        !clientInstance || !clientInstance->getLocalPlayer() || !clientInstance->getLocalPlayer()->packetSender) {
+        return;
+    }
+
+    std::shared_ptr<SDK::Packet> packet = SDK::MinecraftPackets::createPacket(SDK::PacketID::COMMAND_REQUEST);
+    if (!packet) return;
+
+    auto* command = reinterpret_cast<SDK::CommandRequestPacket*>(packet.get());
+    command->applyCommand("/connection");
+
+    connectionRefreshAt = {};
+    suppressUntil = now + connectionResponseWindow;
+    clientInstance->getLocalPlayer()->packetSender->sendToServer(packet.get());
+}
+
+void HideAndSeekCrashWarning::onUpdate(UpdateEvent&) {
+    updateConnectionState();
 }
 
 void HideAndSeekCrashWarning::onClientText(ClientTextEvent& ev) {
-    if (warned) return;
+    if (warned || !onHive) return;
+    if (std::chrono::steady_clock::now() > suppressUntil) return;
 
     SDK::TextPacket* textPacket = ev.getTextPacket();
     std::string* rawMessagePtr = textPacket ? textPacket->getMessage() : nullptr;
