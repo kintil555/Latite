@@ -624,7 +624,7 @@
         "client.module.disableParticles.name": "Disable Particles",
         "client.module.disableParticles.desc": "Disables particle effects to improve performance",
         "client.module.hideAndSeekCrashWarning.name": "Hide and Seek Crash Warning",
-        "client.module.hideAndSeekCrashWarning.desc": "Warns you in chat when a Hide and Seek game starts on The Hive, which is known to cause crashes",
+        "client.module.hideAndSeekCrashWarning.desc": "Always-on: warns you in chat when you connect to the Hide and Seek hub on The Hive, which is known to cause crashes",
         "client.module.skinStealer.name": "Skin Stealer",
         "client.module.skinStealer.desc": "Opens a menu for saving player skins from the current player list.",
         "client.screen.skinStealer.playerCount.one": "{} player found",
