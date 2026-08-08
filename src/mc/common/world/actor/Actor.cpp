@@ -33,23 +33,40 @@ void SDK::Actor::setStatusFlag(int flag, bool value) {
     comp->flags[flag] = value;
 }
 
+// aabbShape/actorRotation/stateVector are raw component pointers fetched via
+// the entt registry (see Actor.h) and are null for actors that don't carry
+// that component -- e.g. some non-mob entities in custom minigames such as
+// Hide and Seek's disguise/prop actors. Dereferencing them unconditionally
+// crashes (0xC0000005) the moment such an actor enters a module's render
+// loop (Hitboxes/HitIndicator iterate every actor in the level). Fall back
+// to a static zero value instead of relying on every caller to null-check.
 AABB& SDK::Actor::getBoundingBox() {
+    static AABB empty {};
+    if (!aabbShape) return empty;
     return aabbShape->boundingBox;
 }
 
 Vec2& SDK::Actor::getRot() {
+    static Vec2 empty {};
+    if (!actorRotation) return empty;
     return actorRotation->rotation;
 }
 
 Vec3& SDK::Actor::getVelocity() {
+    static Vec3 empty {};
+    if (!stateVector) return empty;
     return stateVector->velocity;
 }
 
 Vec3& SDK::Actor::getPos() {
+    static Vec3 empty {};
+    if (!stateVector) return empty;
     return stateVector->pos;
 }
 
 Vec3& SDK::Actor::getPosOld() {
+    static Vec3 empty {};
+    if (!stateVector) return empty;
     return stateVector->posOld;
 }
 
@@ -97,11 +114,18 @@ void SDK::Actor::setYBodyRotations(float current, float old) {
 }
 
 uint64_t SDK::Actor::getRuntimeID() {
-    return this->tryGetComponent<RuntimeIDComponent>()->runtimeID;
+    auto component = this->tryGetComponent<RuntimeIDComponent>();
+    return component ? component->runtimeID : 0;
 }
 
 uint32_t SDK::Actor::getEntityTypeID() {
-    return this->tryGetComponent<ActorTypeComponent>()->type;
+    // Called first in Hitboxes/HitIndicator's per-actor loop, so a missing
+    // component here (actors without ActorTypeComponent, seen with some
+    // custom-minigame prop/disguise actors) was the earliest and most direct
+    // crash point of any Actor getter -- same nullptr-component class of bug
+    // as getBoundingBox/getPos/getRot above.
+    auto component = this->tryGetComponent<ActorTypeComponent>();
+    return component ? component->type : 0;
 }
 
 std::string SDK::Actor::getEntityLocalizationKey() {
