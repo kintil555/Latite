@@ -2004,8 +2004,8 @@ void ClickGUI::drawColorPicker() {
                                     totalDisplayRect.bottom };
             RectF hexBox = { colorModeRect.right + pad, totalDisplayRect.top, colorModeRect.right + pad + hexBoxWidth,
                              totalDisplayRect.bottom };
-            RectF colorDisplayRect = { hexBox.right + pad, totalDisplayRect.top, hexBox.right + pad + colorDisplayWidth,
-                                       totalDisplayRect.bottom };
+            RectF colorDisplayRect = { totalDisplayRect.right - pad - colorDisplayWidth, totalDisplayRect.top,
+                                       totalDisplayRect.right - pad, totalDisplayRect.bottom };
 
             if (pickerTextBoxes.size() <= i) {
                 pickerTextBoxes.insert(pickerTextBoxes.begin() + i, TextBox(hexBox, 7));
