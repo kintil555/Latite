@@ -40,8 +40,9 @@ void SDK::Actor::setStatusFlag(int flag, bool value) {
 // crashes (0xC0000005) the moment such an actor enters a module's render
 // loop (Hitboxes/HitIndicator iterate every actor in the level). Fall back
 // to a static zero value instead of relying on every caller to null-check.
+// AABB has no default constructor, so the fallback must be built explicitly.
 AABB& SDK::Actor::getBoundingBox() {
-    static AABB empty {};
+    static AABB empty { Vec3(0.f, 0.f, 0.f), Vec3(0.f, 0.f, 0.f) };
     if (!aabbShape) return empty;
     return aabbShape->boundingBox;
 }
