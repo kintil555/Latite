@@ -11,7 +11,7 @@ public:
 
     void onRenderLayer(Event& ev);
     void onTick(Event& ev);
-    void onAfterMove(Event& ev);
+    void onBeforeMove(Event& ev);
 
 private:
     void applyInput(SDK::MoveInputComponent* input);
@@ -21,8 +21,10 @@ private:
 
     // Cached every frame from RenderLayerEvent (the only place the current
     // screen's UIControl tree is available); read back on both TickEvent
-    // (world tick -- always runs) and AfterMoveEvent (client input tick --
-    // appears to be skipped while a UI is open, kept as a belt-and-suspenders
-    // override in case that's not true on every screen).
+    // (world tick) and BeforeMoveEvent (fired right before the game's own
+    // ClientInputUpdateSystemInternal::tickUpdateClientInput runs, so our
+    // override is what the engine actually reads that tick -- AfterMoveEvent
+    // fires only once the real function has already consumed the input,
+    // which made the override apply a tick late).
     bool inInventoryScreen = false;
 };

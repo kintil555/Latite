@@ -3,7 +3,7 @@
 #include "client/Latite.h"
 #include "client/input/Keyboard.h"
 #include "client/event/events/RenderLayerEvent.h"
-#include "client/event/events/AfterMoveEvent.h"
+#include "client/event/events/BeforeMoveEvent.h"
 #include "client/event/events/TickEvent.h"
 #include "mc/common/client/gui/controls/VisualTree.h"
 #include "mc/common/client/gui/controls/UIControl.h"
@@ -20,7 +20,7 @@ InventoryWalk::InventoryWalk()
 
     listen<RenderLayerEvent>(static_cast<EventListenerFunc>(&InventoryWalk::onRenderLayer));
     listen<TickEvent>(static_cast<EventListenerFunc>(&InventoryWalk::onTick));
-    listen<AfterMoveEvent>(static_cast<EventListenerFunc>(&InventoryWalk::onAfterMove));
+    listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&InventoryWalk::onBeforeMove));
 }
 
 void InventoryWalk::applyInput(SDK::MoveInputComponent* input) {
@@ -47,7 +47,7 @@ void InventoryWalk::onRenderLayer(Event& evGeneric) {
     // Cache whether the current screen is an inventory/container-style screen
     // (player inventory, chest, crafting table, furnace, etc). All of these
     // share the "inventory_screen" root control name in this Minecraft
-    // version. This flag is read back on the movement tick in onAfterMove,
+    // version. This flag is read back on the movement tick in onBeforeMove,
     // since the UI tree is only available here on the render layer.
     auto* root = ev.getScreenView() && ev.getScreenView()->visualTree ? ev.getScreenView()->visualTree->rootControl
                                                                        : nullptr;
@@ -55,12 +55,10 @@ void InventoryWalk::onRenderLayer(Event& evGeneric) {
 }
 
 void InventoryWalk::onTick(Event&) {
-    // World ticks (MultiPlayerLevel::subTick) run every game tick regardless
-    // of which screen is open, unlike the client-input tick that drives
-    // AfterMoveEvent -- that one appears to be skipped by the game entirely
-    // while a UI like the inventory is open, which meant the AfterMoveEvent
-    // override below was never actually reached while testing this. Doing
-    // the override here as well guarantees it runs even in that case.
+    // World ticks (MultiPlayerLevel::subTick) run on a separate cadence from
+    // the client input tick that drives BeforeMoveEvent. Doing the override
+    // here too is a harmless belt-and-suspenders in case anything reads the
+    // move input component from the world tick before the input tick runs.
     if (!inInventoryScreen) return;
 
     auto* localPlayer = SDK::ClientInstance::get()->getLocalPlayer();
@@ -70,8 +68,8 @@ void InventoryWalk::onTick(Event&) {
     applyInput(input);
 }
 
-void InventoryWalk::onAfterMove(Event& evGeneric) {
-    auto& ev = reinterpret_cast<AfterMoveEvent&>(evGeneric);
+void InventoryWalk::onBeforeMove(Event& evGeneric) {
+    auto& ev = reinterpret_cast<BeforeMoveEvent&>(evGeneric);
     if (!inInventoryScreen) return;
 
     auto* input = ev.getMoveInputHandler();
