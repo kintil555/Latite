@@ -28,18 +28,43 @@ Hitboxes::Hitboxes()
     Eventing::get().listen<RenderLevelEvent, &Hitboxes::onRenderLevel>(this);
 }
 
+namespace {
+    // Guards only the raw vtable dispatch (memory::callVirtual writes into
+    // `list` by reference; no object is constructed inside the __try itself),
+    // matching the same pattern used successfully in GenericHooks::Level_initialize.
+    // A version that instead does `out = level->getRuntimeActorList()` fails
+    // to compile (C2712) because that assignment's by-value return still
+    // requires unwinding right there in the try block.
+    bool tryCallGetRuntimeActorList(SDK::Level* level, std::vector<SDK::Actor*>& list) {
+        __try {
+            memory::callVirtual<void, std::vector<SDK::Actor*>&>(level, 0x145, list);
+            return true;
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+            return false;
+        }
+    }
+}
+
 void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
     auto dc = MCDrawUtil3D(SDK::ClientInstance::get()->levelRenderer, SDK::ScreenContext::instance3d,
                             SDK::MaterialPtr::getSelectionOverlayMaterial());
 
     auto lp = SDK::ClientInstance::get()->getLocalPlayer();
     auto level = SDK::ClientInstance::get()->minecraft->getLevel();
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
 
     if (level == nullptr) return;
 
     std::unordered_set<uint64_t> seenThisFrame;
 
-    for (const auto entt : level->getRuntimeActorList()) {
+    // level can pass the null-check above and still be mid-teardown (e.g. a
+    // leave-game/disconnect racing this render frame), which crashes inside
+    // the virtual call in getRuntimeActorList (0xC0000005). Guard the call
+    // itself rather than trusting the earlier null-check alone.
+    std::vector<SDK::Actor*> actors;
+    if (!tryCallGetRuntimeActorList(level, actors)) return;
+
+    for (const auto entt : actors) {
         if (entt == lp) continue;
         if (!std::get<BoolValue>(items) && entt->getEntityTypeID() == 64) continue;
 
@@ -78,10 +103,9 @@ void Hitboxes::onRenderLevel(RenderLevelEvent& event) {
             ghostBoxes.insert_or_assign(runtimeID, AABB(snappedLower, snappedLower + Vec3(1.f, 1.f, 1.f)));
         }
 
-        bool willShowLine =
-            std::get<BoolValue>(showLine) &&
-            (!entt->isPlayer() || (!SDK::RakNetConnector::get() || SDK::RakNetConnector::get()->ipAddress.empty()) ||
-             entt == lp);
+        bool willShowLine = std::get<BoolValue>(showLine) &&
+                           (!entt->isPlayer() || (!connectionInfo || connectionInfo->hostIpAddress.empty()) ||
+                            entt == lp);
 
         auto boxCol = std::get<ColorValue>(boxColor).getMainColor();
         auto lineCol = std::get<ColorValue>(lineColor).getMainColor();
