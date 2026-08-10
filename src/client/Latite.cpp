@@ -212,6 +212,7 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(LevelRenderer_renderLevel),
         MVSIG(Options_getGamma),
         MVSIG(Options_getPerspective),
+        MVSIG(Options_setPerspective),
         MVSIG(Options_getHideHand),
         MVSIG(ClientInstance_grabCursor),
         MVSIG(ClientInstance_releaseCursor),
@@ -250,7 +251,9 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(ItemStackBase_getDamageValue),
         MVSIG(MinecraftPackets_createPacket),
         MVSIG(Actor_attack),
-        MVSIG(GuiData__addMessage),
+        MVSIG(Actor_getNameTag),
+        MVSIG(Actor_setNameTag),
+        MVSIG(GuiMessageVector_emplaceBack),
         MVSIG(_updatePlayer),
         MVSIG(GameArguments__onUri),
         MVSIG(RenderMaterialGroup__common),
@@ -258,6 +261,7 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(ClientInstanceScreenModel_forwardSoundSubtitle),
         MVSIG(BaseActorRenderer_renderText),
         MVSIG(AppPlatformGDK_releaseMouse),
+        MVSIG(LevelRendererCamera_disableParticlesGate),
         MVSIG(AppPlatform_GameCorePC_pickImage),
         MVSIG(Misc::Platform_GameCore),
         MVSIG(Misc::mouseDevice),
@@ -598,12 +602,13 @@ void Latite::threadsafeInit() {
 
 static void blockModules(std::string_view moduleName, std::string_view serverName,
                          std::string_view featuredServerName = {}) {
-    auto inst = SDK::RakNetConnector::get();
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
 
     std::vector<std::wstring> blockedList;
-    if (inst &&
-        (inst->dns.find(serverName) != std::string::npos || inst->ipAddress.find(serverName) != std::string::npos ||
-         (!featuredServerName.empty() && inst->featuredServer == featuredServerName))) {
+    if (connectionInfo &&
+        (connectionInfo->unresolvedUrl.find(serverName) != std::string::npos ||
+         connectionInfo->hostIpAddress.find(serverName) != std::string::npos ||
+         (!featuredServerName.empty() && connectionInfo->thirdPartyServerInfo.creatorName == featuredServerName))) {
         Latite::getModuleManager().forEach([&](std::shared_ptr<Module> mod) {
             if (!mod->isBlocked()) {
                 if (mod->name() == moduleName) {
@@ -628,10 +633,11 @@ static void blockModules(std::string_view moduleName, std::string_view serverNam
 }
 
 void Latite::updateModuleBlocking() {
-    auto inst = SDK::RakNetConnector::get();
-    if (!inst) return;
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
+    if (!connectionInfo) return;
 
-    if (!inst->dns.empty() || !inst->ipAddress.empty() || !inst->featuredServer.empty()) {
+    if (!connectionInfo->unresolvedUrl.empty() || !connectionInfo->hostIpAddress.empty() ||
+        !connectionInfo->thirdPartyServerInfo.creatorName.empty()) {
         // scuffed but we don't have a proper static management system
 
         static_assert(std::is_base_of_v<Module, Freelook>);
@@ -944,19 +950,23 @@ void Latite::onUpdate(Event& evGeneric) {
         this->clientThreadQueue.pop();
     }
 
-    auto rak = SDK::RakNetConnector::get();
+    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
 
-    if (!rak || rak->ipAddress.empty()) {
+    if (!connectionInfo || connectionInfo->hostIpAddress.empty()) {
         // updateModuleBlocking();
         getModuleManager().forEach([](std::shared_ptr<Module> mod) {
             mod->setBlocked(false);
         });
     }
 
-    if (std::get<BoolValue>(centerCursorMenus) && SDK::ClientInstance::get()->minecraftGame->isCursorGrabbed()) {
-        RECT r = { 0, 0, 0, 0 };
-        GetClientRect(SDK::GameCore::get()->hwnd, &r);
-        SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+    if (auto* client = SDK::ClientInstance::get()) {
+        if (std::get<BoolValue>(centerCursorMenus) && client->minecraftGame && client->minecraftGame->isCursorGrabbed()) {
+            if (auto* core = SDK::GameCore::get()) {
+                RECT r = { 0, 0, 0, 0 };
+                GetClientRect(core->hwnd, &r);
+                SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+            }
+        }
     }
 
     latiteUsers = latiteUsersDirty;
@@ -980,9 +990,11 @@ void Latite::onUpdate(Event& evGeneric) {
         lastDX11 = std::get<BoolValue>(useDX11);
     }
 
-    rgbHue += SDK::ClientInstance::get()->minecraft->timer->alpha * 0.005f * std::get<FloatValue>(rgbSpeed);
-    if (rgbHue > 1.f) {
-        rgbHue = 0.f;
+    if (auto* client = SDK::ClientInstance::get(); client && client->minecraft && client->minecraft->timer) {
+        rgbHue += client->minecraft->timer->alpha * 0.005f * std::get<FloatValue>(rgbSpeed);
+        if (rgbHue > 1.f) {
+            rgbHue = 0.f;
+        }
     }
 }
 

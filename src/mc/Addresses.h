@@ -32,7 +32,7 @@ public:
             [](memory::signature_store&, uintptr_t res) {
                 return res;
             },
-            "74 ? 48 8B 03 48 8B 80 F8 00 00 00 48 89 D9 FF 15 ? ? ? ? 84 C0 75 ? 48 8B 4B"_sig, "ThirdPersonNametag"
+            "74 ? 48 8B 03 48 8B 80 ? ? ? ? 48 89 D9 FF 15 ? ? ? ? 84 C0 75 ? 48 8B 4B"_sig, "ThirdPersonNametag"
         };
     };
 
@@ -68,7 +68,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "48 83 EC 38 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 30 48 8B 01 48 8B 40 08 48 8D 54 24 28 41 B8 35 00 00 00 FF 15 ? ? ? ? 48 8B 4C 24 28 48 89 C8 48 8B 49 08 48 8B 89 ? ? 00 00 48 85 C9 75 ? F3 0F 10 40 18"_sig,
+        "48 83 EC 38 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? 48 8B 01 48 8B 40 08 48 8D 54 24 ? 41 B8 35 00 00 00"_sig,
         "Options::getGamma"
     };
 
@@ -79,6 +79,12 @@ public:
         "48 83 EC 38 48 8B 05 ? ? ? ? 48 31 E0 48 89 44 24 ? 48 8B 01 48 8B 40 08 48 8D 54 24 ? 41 B8 03 00 00 00"_sig,
         "Options::getPerspective"
     };
+
+    inline static SigImpl Options_setPerspective { [](memory::signature_store&, uintptr_t res) {
+                                                      return res;
+                                                  },
+                                                   "56 57 48 83 EC ? 89 D6 48 89 CF 48 8B 81"_sig,
+                                                   "Options::setPerspective" };
 
     inline static SigImpl Options_getHideHand {
         [](memory::signature_store&, uintptr_t res) {
@@ -123,7 +129,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "55 56 57 53 48 83 EC ? 48 8D 6C 24 ? 48 C7 45 ? ? ? ? ? 48 89 CE 48 8D 4D ? 66 BA 1A 00 66 41 B8 2A 00 E8 ? ? ? ? 48 8D 0D ? ? ? ? E8 ? ? ? ? 85 C0 0F 85"_sig,
+        "55 41 57 41 56 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 48 C7 45 ? ? ? ? ? 48 89 CF 48 8D 71"_sig,
         "MinecraftGame::onDeviceLost"
     };
 
@@ -180,7 +186,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 31 E0 48 89 84 24 ? ? ? ? 4C 8B 02 4C 3B 05 ? ? ? ? 0F 85 ? ? ? ? 0F B7 42 ? 44 0F B7 82 ? ? ? ? 44 0F B7 8A ? ? ? ? 66 89 44 24 ? 0F 10 42 ? 0F 10 4A ? 0F 10 52 ? 0F 10 5A ? 0F 11 44 24 ? 0F 11 4C 24 ? 0F 11 54 24 ? 0F 11 5C 24 ? 0F 10 42 ? 0F 11 44 24 ? 0F 10 42 ? 0F 11 44 24 ? 0F 10 42 ? 0F 11 84 24 ? ? ? ? 0F 10 82 ? ? ? ? 0F 11 84 24 ? ? ? ? 66 44 89 8C 24 ? ? ? ? 66 44 89 84 24 ? ? ? ? 48 8D 54 24 ? 45 31 C0 45 31 C9 E8 ? ? ? ? BA ? ? ? ?"_sig,
+        "48 81 EC ? ? ? ? 48 8B 05 ? ? ? ? 48 31 E0 48 89 84 24 ? ? ? ? 4C 8B 02 4C 3B 05 ? ? ? ? 0F 85 ? ? ? ? 0F B7 42 ? 44 0F B7 82 ? ? ? ? 44 0F B7 8A ? ? ? ? 66 89 44 24 ? 0F 10 42 ? 0F 10 4A ? 0F 10 52 ? 0F 10 5A ? 0F 11 44 24 ? 0F 11 4C 24 ? 0F 11 54 24 ? 0F 11 5C 24 ? 0F 10 42 ? 0F 11 44 24 ? 0F 10 42 ? 0F 11 44 24 ? 0F 10 42 ? 0F 11 84 24 ? ? ? ? 0F 10 82 ? ? ? ? 0F 11 84 24 ? ? ? ? 66 44 89 8C 24 ? ? ? ? 66 44 89 84 24 ? ? ? ? 48 8D 54 24 ? 45 31 C0 45 31 C9 E8 ? ? ? ? BA"_sig,
         "RakPeer::GetAveragePing"
     };
 
@@ -188,7 +194,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "55 41 56 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 44 0F 29 5D ? 44 0F 29 55 ? 44 0F 29 4D ? 44 0F 29 45 ? 0F 29 7D ? 0F 29 75 ? 48 C7 45 ? ? ? ? ? 48 89 D7 48 89 CE 48 8B 89 ? ? ? ?"_sig,
+        "55 41 56 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 44 0F 29 5D ? 44 0F 29 55 ? 44 0F 29 4D ? 44 0F 29 45 ? 0F 29 7D ? 0F 29 75 ? 48 C7 45 ? ? ? ? ? 48 89 D7 48 89 CE 48 8B 89"_sig,
         "LocalPlayer::applyTurnDelta"
     };
 
@@ -225,7 +231,7 @@ public:
     inline static SigImpl ItemStackVtable { [](memory::signature_store& store, uintptr_t) {
                                                return store.deref(3);
                                            },
-                                            "48 8D 1D ? ? ? ? 48 89 5D ? 48 89 F9"_sig, "ItemStackVtable" };
+                                            "48 8D 1D ? ? ? ? 48 89 5D ? 48 8D 4D ? 48 89 F2"_sig, "ItemStackVtable" };
 
     inline static SigImpl ItemStackBase_destructor {
         [](memory::signature_store&, uintptr_t res) {
@@ -239,7 +245,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC A8 00 00 00 48 8D AC 24 80 00 00 00 44 0F 29 4D 10 44 0F 29 45 00 0F 29 7D F0 0F 29 75 E0 48 C7 45 D8 FE FF FF FF 0F 28 F3 0F 28 FA 44 0F 28 C1 48 89 CE 48 8B 0D ? ? ? ? 48 8B 01 48 8B 40 10"_sig,
+        "55 41 57 41 56 41 55 41 54 56 57 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 44 0F 29 4D ? 44 0F 29 45 ? 0F 29 7D ? 0F 29 75 ? 48 C7 45 ? ? ? ? ? 0F 28 F3 0F 28 FA 44 0F 28 C1 48 89 CE 48 8B 0D"_sig,
         "Tessellator::vertex"
     };
 
@@ -354,19 +360,26 @@ public:
         "Actor::attack"
     };
 
-    inline static SigImpl GuiData__addMessage { [](memory::signature_store& store, uintptr_t) {
-                                                   return store.deref(1);
-                                               },
-                                                "E8 ? ? ? ? 4C 8B B6 ? ? ? ? 48 8B BE ? ? ? ? 48 89 F8"_sig,
-                                                "GuiData::_addMessage(MessageContext*, UIProfanityContext)" };
+    inline static SigImpl Actor_getNameTag {
+        [](memory::signature_store&, uintptr_t res) {
+            return res;
+        },
+        "56 48 83 EC ? 48 8B 81 ? ? ? ? 48 85 C0 74 ? 8B 50 ? 48 8B 08 29 CA 81 E2 ? ? ? ? 48 8D 05"_sig,
+        "Actor::getNameTag"
+    };
 
     inline static SigImpl Actor_setNameTag {
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "55 56 57 53 48 83 EC ? 48 8D 6C 24 ? 48 C7 45 ? ? ? ? ? 48 89 D7 48 89 CE 48 81 C1 ? ? ? ? 48 8D 55"_sig,
-        "Actor::setNameTag"
+        "56 57 48 83 EC ? 48 89 CE 48 8B 89 ? ? ? ? 48 85 C9 0F 84 ? ? ? ? 48 89 D7"_sig, "Actor::setNameTag"
     };
+
+    inline static SigImpl GuiMessageVector_emplaceBack { [](memory::signature_store&, uintptr_t res) {
+                                                            return res;
+                                                        },
+                                                         "49 89 D0 48 8B 51 ? 48 3B 51 ? 0F 84 ? ? ? ? 41 8B 00"_sig,
+                                                         "std::vector<GuiMessage>::emplace_back" };
 
     inline static SigImpl _updatePlayer {
         [](memory::signature_store&, uintptr_t res) {
@@ -397,7 +410,7 @@ public:
         [](memory::signature_store&, uintptr_t res) {
             return res;
         },
-        "55 56 53 48 81 EC 90 02 00 00 48 8D AC 24 80 00 00 00 48 C7 85 08 02 00 00 FE FF FF FF 44 88 CB 49 89 D1 48 89 CE 0F 57 C0"_sig,
+        "55 56 53 48 81 EC ? ? ? ? 48 8D AC 24 ? ? ? ? 48 C7 85 ? ? ? ? ? ? ? ? 44 88 CB"_sig,
         "GuiData::displayClientMessage"
     };
 
@@ -420,6 +433,12 @@ public:
                                                        },
                                                         "56 57 48 83 EC ? 48 89 CE B9 ? ? ? ? FF 15"_sig,
                                                         "AppPlatformGDK_releaseMouse" };
+
+    inline static SigImpl LevelRendererCamera_disableParticlesGate { [](memory::signature_store&, uintptr_t res) {
+                                                                        return res;
+                                                                    },
+                                                                     "80 BD ? ? ? ? ? 0F 85 ? ? ? ? 8B 05 ? ? ? ? 8B 0D ? ? ? ? 65 48 8B 14 25 ? ? ? ? 48 8B 0C CA 3B 81 ? ? ? ? 0F 8F ? ? ? ? 48 8D 0D ? ? ? ? 48 89 8D ? ? ? ? C6 85 ? ? ? ? ? 48 C7 85 ? ? ? ? ? ? ? ? C6 85 ? ? ? ? ? 4C 8D 85 ? ? ? ? 48 89 F2 E8 ? ? ? ? 88 85 ? ? ? ? 48 8B 95"_sig,
+                                                                     "LevelRendererCamera::disableParticlesGate" };
 };
 
 // after adding sigs here, add them in latite.cpp

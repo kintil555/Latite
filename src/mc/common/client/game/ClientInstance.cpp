@@ -7,11 +7,12 @@ SDK::ClientInstance* SDK::ClientInstance::instance = nullptr;
 
 SDK::ClientInstance* SDK::ClientInstance::get() {
     if (!instance) {
-        auto* gameCore = Platform_GameCore::get();
-        if (!gameCore) return nullptr;
+        const auto platform = Platform_GameCore::get();
+        if (!platform) {
+            return nullptr;
+        }
 
-        // IMinecraftGame
-        const auto mcgame = gameCore->getMinecraftGame();
+        const auto mcgame = platform->getMinecraftGame();
         if (!mcgame) {
             return nullptr;
         }
@@ -34,7 +35,7 @@ SDK::GuiData* SDK::ClientInstance::getGuiData() {
 }
 
 SDK::Options* SDK::ClientInstance::getOptions() {
-    return hat::member_at<Options*>(this, 0xC68);
+    return hat::member_at<Options*>(this, 0xD78);
 }
 
 SDK::ResourcePackManager& SDK::ClientInstance::getResourcePackManager() {
