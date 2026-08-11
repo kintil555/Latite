@@ -592,12 +592,17 @@ void Latite::threadsafeInit() {
     Latite::getRenderer().setShouldInit();
 
     Latite::getCommandManager().prefix = Latite::get().getCommandPrefix();
-    Latite::getNotifications().push(LocalizeString::get("client.intro.welcome"));
-    Latite::getNotifications().push(
-        util::FormatWString(LocalizeString::get("client.intro.menubutton"),
-                            { util::StrToWStr(util::KeyToString(Latite::get().getMenuKey().value)) }));
 
-    Latite::getScreenManager().showScreen<NoticeScreen>();
+    // jod-only: this branch is JumpOnDamage-only with no GUI/settings menu, so
+    // the welcome/menu-button toasts and the startup disclaimer (NoticeScreen)
+    // are intentionally skipped -- there is no menu for them to point at and
+    // nothing for the user to acknowledge. JumpOnDamage stays enabled by default
+    // with zero screen/notification footprint on load.
+    // Latite::getNotifications().push(LocalizeString::get("client.intro.welcome"));
+    // Latite::getNotifications().push(
+    //     util::FormatWString(LocalizeString::get("client.intro.menubutton"),
+    //                         { util::StrToWStr(util::KeyToString(Latite::get().getMenuKey().value)) }));
+    // Latite::getScreenManager().showScreen<NoticeScreen>();
 }
 
 static void blockModules(std::string_view moduleName, std::string_view serverName,
