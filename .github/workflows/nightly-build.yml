@@ -2,7 +2,7 @@ name: Latite Nightly
 
 on:
   push:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - "**.cpp"
       - "**.h"
@@ -10,7 +10,7 @@ on:
       - "**CMakeLists.txt"
       - "**.cmake"
   pull_request:
-    branches: ["master"]
+    branches: ["master", "jod-only"]
     paths:
       - "**.cpp"
       - "**.h"
@@ -89,15 +89,21 @@ jobs:
           if-no-files-found: error
 
       - name: Recreate nightly release to refresh date
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/jod-only')
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete nightly -y || true
-          git push origin :refs/tags/nightly || true
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            TAG=nightly
+          else
+            TAG=nightly-jod
+          fi
+          echo "RELEASE_TAG=$TAG" >> "$GITHUB_ENV"
+          gh release delete "$TAG" -y || true
+          git push origin ":refs/tags/$TAG" || true
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (master)
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2.3.2
         with:
@@ -113,6 +119,28 @@ jobs:
             - Debug symbols (LatiteNightly.pdb)
           prerelease: true
           make_latest: true
+          files: |
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteNightly.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteNightly.pdb
+
+      - name: Create GitHub Release (jod-only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/jod-only'
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          tag_name: nightly-jod
+          name: Latite Nightly (JoD-only)
+          body: |
+            ### This is an automated, experimental DLL build of the JumpOnDamage-only branch.
+
+            **This release has a high chance of containing bugs or crashes.**
+
+            Single-module build: JumpOnDamage only, always enabled, no GUI/settings menu.
+
+            Includes:
+            - Nightly build (LatiteNightly.dll)
+            - Debug symbols (LatiteNightly.pdb)
+          prerelease: true
+          make_latest: false
           files: |
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteNightly.dll
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteNightly.pdb
