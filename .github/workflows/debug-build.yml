@@ -89,15 +89,20 @@ jobs:
           if-no-files-found: error
 
       - name: Recreate debug release to refresh date
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/jod-only')
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete debug -y || true
-          git push origin :refs/tags/debug || true
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            TAG=debug
+          else
+            TAG=debug-jod
+          fi
+          gh release delete "$TAG" -y || true
+          git push origin ":refs/tags/$TAG" || true
 
-      - name: Create GitHub Release
+      - name: Create GitHub Release (master)
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2.3.2
         with:
@@ -113,6 +118,28 @@ jobs:
             - LatiteDebug.pdb
           prerelease: true
           make_latest: true
+          files: |
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteDebug.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteDebug.pdb
+
+      - name: Create GitHub Release (jod-only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/jod-only'
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          tag_name: debug-jod
+          name: Latite Debug (JoD-only)
+          body: |
+            ### Latest Automated Debug Build (JumpOnDamage-only branch)
+
+            ⚠ Debug builds may contain bugs or be slow.
+
+            Single-module build: JumpOnDamage only, always enabled, no GUI/settings menu.
+
+            Includes:
+            - LatiteDebug.dll
+            - LatiteDebug.pdb
+          prerelease: true
+          make_latest: false
           files: |
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteDebug.dll
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteDebug.pdb
