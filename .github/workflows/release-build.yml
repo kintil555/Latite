@@ -49,8 +49,11 @@ jobs:
         id: version
         shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set +e # we handle failures explicitly below; don't let a non-zero
+                  # exit from any command in a pipeline silently kill the step
+
           if [ "${{ github.ref }}" = "refs/heads/master" ]; then
             PREFIX="v"
             MAJOR_MINOR="2.0" # bump this manually for the next major/minor line
@@ -62,8 +65,15 @@ jobs:
           # Look at existing release tags (not just local git tags, which the
           # runner may not have if a tag was deleted/recreated) for the highest
           # patch number under this prefix + major.minor, then add one.
-          LATEST_PATCH=$(gh api "repos/${{ github.repository }}/tags" --paginate \
-            --jq '.[].name' 2>/dev/null \
+          TAGS_JSON=$(gh api "repos/${{ github.repository }}/tags" --paginate 2>&1)
+          GH_EXIT=$?
+          if [ $GH_EXIT -ne 0 ]; then
+            echo "::warning::gh api tags lookup failed (exit $GH_EXIT), assuming no prior tags. Output was:"
+            echo "$TAGS_JSON"
+            TAGS_JSON="[]"
+          fi
+
+          LATEST_PATCH=$(echo "$TAGS_JSON" | jq -r '.[].name' 2>/dev/null \
             | grep -E "^${PREFIX}${MAJOR_MINOR}\.[0-9]+$" \
             | sed -E "s/^${PREFIX}${MAJOR_MINOR}\.//" \
             | sort -n \
