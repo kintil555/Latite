@@ -1,0 +1,150 @@
+name: Latite Release
+
+on:
+  push:
+    branches: ["master", "jod-only"]
+    paths:
+      - "**.cpp"
+      - "**.h"
+      - "**.hpp"
+      - "**CMakeLists.txt"
+      - "**.cmake"
+  workflow_dispatch:
+
+env:
+  BUILD_CONFIGURATION: Release
+  BUILD_DIR: cmake-build-release
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # need full tag history to compute the next version
+
+      # Provides environment variables for MSVC-compatible linking
+      - name: Set up MSVC Developer Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # Install Ninja (GitHub Windows runner already has it, but we ensure fresh install)
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v3
+
+      - name: Compute build timestamp
+        id: build_timestamp
+        shell: bash
+        run: |
+          TS=$(date -u +"%Y-%m-%d_%H-%M-%SZ")
+          echo "TIMESTAMP=$TS" >> "$GITHUB_ENV"
+          echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
+
+      - name: Compute next version tag
+        id: version
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            PREFIX="v"
+            MAJOR_MINOR="2.0" # bump this manually for the next major/minor line
+          else
+            PREFIX="jod-v"
+            MAJOR_MINOR="1.0"
+          fi
+
+          # Look at existing release tags (not just local git tags, which the
+          # runner may not have if a tag was deleted/recreated) for the highest
+          # patch number under this prefix + major.minor, then add one.
+          LATEST_PATCH=$(gh api "repos/${{ github.repository }}/tags" --paginate \
+            --jq '.[].name' 2>/dev/null \
+            | grep -E "^${PREFIX}${MAJOR_MINOR}\.[0-9]+$" \
+            | sed -E "s/^${PREFIX}${MAJOR_MINOR}\.//" \
+            | sort -n \
+            | tail -1)
+
+          if [ -z "$LATEST_PATCH" ]; then
+            NEXT_PATCH=0
+          else
+            NEXT_PATCH=$((LATEST_PATCH + 1))
+          fi
+
+          TAG="${PREFIX}${MAJOR_MINOR}.${NEXT_PATCH}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${MAJOR_MINOR}.${NEXT_PATCH}" >> "$GITHUB_OUTPUT"
+          echo "Computed release tag: $TAG"
+
+      # Configure using Ninja + MSVC cl.exe. Keep this aligned with CMakePresets.json;
+      # packet hooks write into Minecraft-owned STL objects, so clang-cl builds can
+      # differ enough to break chat packet handling at runtime.
+      - name: Configure CMake (MSVC cl.exe + Ninja)
+        run: |
+          $env:CC = "cl.exe"
+          $env:CXX = "cl.exe"
+          cmake -B ${{ env.BUILD_DIR }} -G Ninja `
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_CONFIGURATION }} `
+            -DCMAKE_C_COMPILER=cl.exe `
+            -DCMAKE_CXX_COMPILER=cl.exe `
+            -DLATITE_BUILD_TIMESTAMP=${{ steps.build_timestamp.outputs.timestamp }}
+
+      # Build using Ninja. CMAKE_BUILD_TYPE selected the config at configure time.
+      - name: Build with Ninja
+        run: |
+          cmake --build ${{ env.BUILD_DIR }}
+
+      # P.S. Artifacts are retained for only 90 days.
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Latite-${{ steps.version.outputs.tag }}
+          path: |
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.pdb
+          if-no-files-found: error
+
+      - name: Create GitHub Release (master)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Latite ${{ steps.version.outputs.tag }}
+          body: |
+            ### Latite Client ${{ steps.version.outputs.tag }}
+
+            Stable release build.
+
+            Includes:
+            - Latite.dll
+            - Latite.pdb
+          prerelease: false
+          make_latest: true
+          files: |
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.pdb
+
+      - name: Create GitHub Release (jod-only)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/jod-only'
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Latite JoD-only ${{ steps.version.outputs.tag }}
+          body: |
+            ### Latite Client (JumpOnDamage-only) ${{ steps.version.outputs.tag }}
+
+            Stable release build. Single-module: JumpOnDamage only, always
+            enabled, no GUI/settings menu.
+
+            Includes:
+            - Latite.dll
+            - Latite.pdb
+          prerelease: false
+          make_latest: false
+          files: |
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.pdb

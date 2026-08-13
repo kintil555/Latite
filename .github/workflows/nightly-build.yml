@@ -118,7 +118,7 @@ jobs:
             - Nightly build (LatiteNightly.dll)
             - Debug symbols (LatiteNightly.pdb)
           prerelease: true
-          make_latest: true
+          make_latest: false
           files: |
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteNightly.dll
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteNightly.pdb
