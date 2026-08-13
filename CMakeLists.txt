@@ -137,6 +137,7 @@ target_compile_options(Latite PRIVATE
 )
 
 target_link_options(Latite PRIVATE
+        $<$<CONFIG:Release>:/DEBUG:FULL>
         $<$<CONFIG:Release>:/INCREMENTAL:NO>
         $<$<CONFIG:Release>:/OPT:REF>
         $<$<CONFIG:Release>:/OPT:ICF>
