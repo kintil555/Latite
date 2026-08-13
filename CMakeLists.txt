@@ -98,8 +98,8 @@ add_dependencies(Latite LatiteBuildTimestampGenerator)
 # Final artifact names. Keep these in CMake so the DLL CodeView record and
 # linker-generated PDB name agree, **do not rename the DLL/PDB after linking!!**
 set_target_properties(Latite PROPERTIES
-        OUTPUT_NAME_RELEASE "Latite"
-        PDB_NAME_RELEASE "Latite"
+        OUTPUT_NAME_RELEASE "LatiteJoD"
+        PDB_NAME_RELEASE "LatiteJoD"
         OUTPUT_NAME_RELWITHDEBINFO "Latite"
         PDB_NAME_RELWITHDEBINFO "Latite"
         OUTPUT_NAME_DEBUG "LatiteDebug"
@@ -137,6 +137,7 @@ target_compile_options(Latite PRIVATE
 )
 
 target_link_options(Latite PRIVATE
+        $<$<CONFIG:Release>:/DEBUG:FULL>
         $<$<CONFIG:Release>:/INCREMENTAL:NO>
         $<$<CONFIG:Release>:/OPT:REF>
         $<$<CONFIG:Release>:/OPT:ICF>

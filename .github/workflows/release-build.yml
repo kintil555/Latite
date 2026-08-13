@@ -45,6 +45,19 @@ jobs:
           echo "TIMESTAMP=$TS" >> "$GITHUB_ENV"
           echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
 
+      - name: Compute output binary name
+        id: binname
+        shell: bash
+        run: |
+          # CMakeLists.txt sets OUTPUT_NAME_RELEASE/PDB_NAME_RELEASE per branch:
+          # "Latite" on master, "LatiteJoD" on jod-only -- keep this in sync with
+          # that file if either name ever changes.
+          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
+            echo "name=Latite" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=LatiteJoD" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Compute next version tag
         id: version
         shell: bash
@@ -112,10 +125,10 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Latite-${{ steps.version.outputs.tag }}
+          name: ${{ steps.binname.outputs.name }}-${{ steps.version.outputs.tag }}
           path: |
-            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.dll
-            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.pdb
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/${{ steps.binname.outputs.name }}.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/${{ steps.binname.outputs.name }}.pdb
           if-no-files-found: error
 
       - name: Create GitHub Release (master)
@@ -135,8 +148,8 @@ jobs:
           prerelease: false
           make_latest: true
           files: |
-            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.dll
-            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.pdb
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/${{ steps.binname.outputs.name }}.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/${{ steps.binname.outputs.name }}.pdb
 
       - name: Create GitHub Release (jod-only)
         if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/jod-only'
@@ -151,10 +164,10 @@ jobs:
             enabled, no GUI/settings menu.
 
             Includes:
-            - Latite.dll
-            - Latite.pdb
+            - LatiteJoD.dll
+            - LatiteJoD.pdb
           prerelease: false
           make_latest: false
           files: |
-            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.dll
-            ${{ github.workspace }}/${{ env.BUILD_DIR }}/Latite.pdb
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/${{ steps.binname.outputs.name }}.dll
+            ${{ github.workspace }}/${{ env.BUILD_DIR }}/${{ steps.binname.outputs.name }}.pdb
