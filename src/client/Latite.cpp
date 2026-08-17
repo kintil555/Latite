@@ -15,6 +15,7 @@
 
 #include "config/ConfigManager.h"
 #include "misc/ClientMessageQueue.h"
+#include "misc/ServerDetection.h"
 #include "misc/TempStorage.h"
 #include "input/Keyboard.h"
 #include "memory/hook/Hooks.h"
@@ -165,6 +166,9 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         const auto minor = LOWORD(fileInfo->dwFileVersionMS);
         const auto build = HIWORD(fileInfo->dwFileVersionLS);
 
+        // TODO(1.26.50): Remove the pre-1.26.44 compatibility flag and its guarded workarounds.
+        if (build < 44) Latite::get().tmp2640Is4240 = true;
+
         Latite::get().gameVersion = std::format("{}.{}.{}", major, minor, build);
     }
 
@@ -262,10 +266,14 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(BaseActorRenderer_renderText),
         MVSIG(AppPlatformGDK_releaseMouse),
         MVSIG(LevelRendererCamera_disableParticlesGate),
-        MVSIG(AppPlatform_GameCorePC_pickImage),
         MVSIG(Misc::Platform_GameCore),
         MVSIG(Misc::mouseDevice),
     };
+
+    // TODO(1.26.50): Remove the custom Windows 10 picker signature along with its compatibility hook.
+    if (Latite::get().tmp2640Is4240) {
+        sigList.push_back(MVSIG(AppPlatform_GameCorePC_pickImage));
+    }
 
     new (configMgrBuf) ConfigManager();
     if (!Latite::getConfigManager().loadMaster()) {
@@ -600,24 +608,16 @@ void Latite::threadsafeInit() {
     Latite::getScreenManager().showScreen<NoticeScreen>();
 }
 
-static void blockModules(std::string_view moduleName, std::string_view serverName,
-                         std::string_view featuredServerName = {}) {
-    auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
-
+static void setModuleBlocked(std::string_view moduleName, bool shouldBlock) {
     std::vector<std::wstring> blockedList;
-    if (connectionInfo &&
-        (connectionInfo->unresolvedUrl.find(serverName) != std::string::npos ||
-         connectionInfo->hostIpAddress.find(serverName) != std::string::npos ||
-         (!featuredServerName.empty() && connectionInfo->thirdPartyServerInfo.creatorName == featuredServerName))) {
-        Latite::getModuleManager().forEach([&](std::shared_ptr<Module> mod) {
-            if (!mod->isBlocked()) {
-                if (mod->name() == moduleName) {
-                    blockedList.push_back(mod->getDisplayName());
-                    mod->setBlocked(true);
-                }
+    Latite::getModuleManager().forEach([&](std::shared_ptr<Module> mod) {
+        if (mod->name() == moduleName && mod->isBlocked() != shouldBlock) {
+            if (shouldBlock) {
+                blockedList.push_back(mod->getDisplayName());
             }
-        });
-    }
+            mod->setBlocked(shouldBlock);
+        }
+    });
 
     if (!blockedList.empty()) {
         std::wstring str;
@@ -634,18 +634,15 @@ static void blockModules(std::string_view moduleName, std::string_view serverNam
 
 void Latite::updateModuleBlocking() {
     auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
-    if (!connectionInfo) return;
+    const auto* server = ServerDetection::identify(connectionInfo);
+    const bool isHiveOrGalaxite =
+        server && (server->id == ServerDetection::ServerId::Hive || server->id == ServerDetection::ServerId::Galaxite);
+    const bool isCubeCraft = server && server->id == ServerDetection::ServerId::CubeCraft;
 
-    if (!connectionInfo->unresolvedUrl.empty() || !connectionInfo->hostIpAddress.empty() ||
-        !connectionInfo->thirdPartyServerInfo.creatorName.empty()) {
-        // scuffed but we don't have a proper static management system
+    static_assert(std::is_base_of_v<Module, Freelook>);
 
-        static_assert(std::is_base_of_v<Module, Freelook>);
-
-        blockModules("Freelook", "hivebedrock", "The Hive");
-        blockModules("Freelook", "galaxite");
-    } else {
-    }
+    setModuleBlocked("Freelook", isHiveOrGalaxite);
+    setModuleBlocked("Gyro", isCubeCraft);
 }
 
 std::string Latite::getBuildTimestamp() {
@@ -952,7 +949,8 @@ void Latite::onUpdate(Event& evGeneric) {
 
     auto* connectionInfo = SDK::RemoteConnectorComposite::getConnectionInfo();
 
-    if (!connectionInfo || connectionInfo->hostIpAddress.empty()) {
+    if (!connectionInfo || (connectionInfo->unresolvedUrl.empty() && connectionInfo->hostIpAddress.empty() &&
+                            connectionInfo->thirdPartyServerInfo.creatorName.empty())) {
         // updateModuleBlocking();
         getModuleManager().forEach([](std::shared_ptr<Module> mod) {
             mod->setBlocked(false);

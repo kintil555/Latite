@@ -64,6 +64,9 @@ private:
     void resetInput();
     SampleBatch drainSamples();
     Vec2 consumeCameraDelta();
+    float consumeFlickStickDelta();
+    void resetFlickStick();
+    [[nodiscard]] bool isFlickStickBlocked() const;
 
     void setGyroActive(bool active);
     void resetActivationState();
@@ -110,8 +113,9 @@ private:
     int pendingDeviceIndex = -1;
     EnumData activationModeData;
     ValueType activationKey = KeyValue('G');
-    ValueType sensitivity = FloatValue(1.f);
-    ValueType verticalRatio = FloatValue(1.f);
+    ValueType horizontalSensitivity = FloatValue(1.f);
+    ValueType verticalSensitivity = FloatValue(1.f);
+    ValueType disableCameraStickYAxis = BoolValue(false);
     ValueType dynamicSensitivity = BoolValue(false);
     ValueType fastSensitivity = FloatValue(1.f);
     ValueType accelerationStartSpeed = FloatValue(20.f);
@@ -122,6 +126,17 @@ private:
     ValueType smoothingBypassSpeed = FloatValue(0.f);
     ValueType invertHorizontal = BoolValue(false);
     ValueType invertVertical = BoolValue(false);
+    ValueType flickStick = BoolValue(false);
+    ValueType flickStickDeadzone = FloatValue(0.8f);
+    ValueType flickDuration = FloatValue(80.f);
+    ValueType sweepSensitivity = FloatValue(1.f);
+    ValueType invertFlickStick = BoolValue(false);
     bool gyroActive = false;
     bool activationKeyDown = false;
+    bool flickStickBlocked = false;
+    bool flickStickEngaged = false;
+    float previousFlickStickAngle = 0.f;
+    float flickAnimationTarget = 0.f;
+    float flickAnimationApplied = 0.f;
+    std::chrono::steady_clock::time_point flickAnimationStart = {};
 };
