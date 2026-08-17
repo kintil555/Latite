@@ -117,7 +117,7 @@ jobs:
             - LatiteDebug.dll
             - LatiteDebug.pdb
           prerelease: true
-          make_latest: true
+          make_latest: false
           files: |
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteDebug.dll
             ${{ github.workspace }}/${{ env.BUILD_DIR }}/LatiteDebug.pdb
