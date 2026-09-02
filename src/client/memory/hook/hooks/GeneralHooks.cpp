@@ -323,6 +323,12 @@ void* GenericHooks::ActorRenderDispatcher_render(void* obj, SDK::BaseActorRender
                                                  Vec3& cameraTargetPos, Vec3 const& pos, const Vec2& rot,
                                                  bool affectedByLighting) {
     if (entity) {
+        RenderEntityEvent cullEv { entity, cameraTargetPos };
+        if (Eventing::get().dispatch(cullEv)) {
+            // culled, skip render entirely
+            return nullptr;
+        }
+
         AfterRenderEntityEvent ev { entity, cameraTargetPos };
         Eventing::get().dispatch(ev);
     }

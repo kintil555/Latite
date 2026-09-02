@@ -1,5 +1,6 @@
 #pragma once
 #include "events/AfterEntityRenderEvent.h"
+#include "events/RenderEntityEvent.h"
 #include "events/AfterMoveEvent.h"
 #include "events/AppSuspendedEvent.h"
 #include "events/AttackEvent.h"

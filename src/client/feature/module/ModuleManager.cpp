@@ -20,6 +20,7 @@
 #include "modules/game/EnvironmentChanger.h"
 #include "modules/game/TextHotkey.h"
 #include "modules/game/Freelook.h"
+#include "modules/game/EntityCulling.h"
 #include "modules/game/AutoGG.h"
 #include "modules/game/HiveTranslate.h"
 #include "modules/game/KillNotification.h"
@@ -112,6 +113,7 @@ ModuleManager::ModuleManager() {
     // this->items.push_back(std::make_shared<Chat>());
     this->items.push_back(std::make_shared<TextHotkey>());
     this->items.push_back(std::make_shared<Freelook>());
+    this->items.push_back(std::make_shared<EntityCulling>());
     this->items.push_back(std::make_shared<ComboCounter>());
     this->items.push_back(std::make_shared<CustomCoordinates>());
     this->items.push_back(std::make_shared<MovableCoordinates>());
