@@ -39,6 +39,7 @@
 #include "modules/visual/Hitboxes.h"
 #include "modules/visual/BlockOutline.h"
 #include "modules/visual/PlayerOverlay.h"
+#include "modules/visual/DamageIndicator.h"
 
 #include "modules/hud/FPSCounter.h"
 #include "modules/hud/CPSCounter.h"
@@ -101,6 +102,7 @@ ModuleManager::ModuleManager() {
     this->items.push_back(std::make_shared<HitIndicator>());
     this->items.push_back(std::make_shared<BlockOutline>());
     this->items.push_back(std::make_shared<PlayerOverlay>());
+    this->items.push_back(std::make_shared<DamageIndicator>());
     this->items.push_back(std::make_shared<MovableScoreboard>());
     this->items.push_back(std::make_shared<Nickname>());
     this->items.push_back(std::make_shared<ReachDisplay>());
