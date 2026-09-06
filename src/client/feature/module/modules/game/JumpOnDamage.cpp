@@ -16,6 +16,10 @@ JumpOnDamage::JumpOnDamage()
                      L"Ticks to wait after taking damage before jumping. 0 = instant.",
                      this->delay, FloatValue(0.f), FloatValue(20.f), FloatValue(1.f));
 
+    addSliderSetting("cooldown", L"Hit Cooldown",
+                     L"Only jumps on the first 2 hits within this window (seconds). Hit count resets once the cooldown ends.",
+                     this->cooldown, FloatValue(1.f), FloatValue(10.f), FloatValue(1.f));
+
     listen<TickEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onTick));
     listen<BeforeMoveEvent>(static_cast<EventListenerFunc>(&JumpOnDamage::onBeforeMove));
 }
@@ -32,6 +36,16 @@ int JumpOnDamage::getDelayTicks() const {
         return static_cast<int>(fv->value);
     }
     return 0;
+}
+
+int JumpOnDamage::getCooldownTicks() const {
+    // Slider is in seconds (1-10); convert to ticks at 20 ticks/second.
+    // Defensive fallback mirrors getDelayTicks() in case the variant was
+    // ever overwritten by config deserialization.
+    if (const auto* fv = std::get_if<FloatValue>(&this->cooldown)) {
+        return static_cast<int>(fv->value * 20.f);
+    }
+    return 3 * 20;
 }
 
 void JumpOnDamage::onTick(Event& evGeneric) {
@@ -73,12 +87,25 @@ void JumpOnDamage::onTick(Event& evGeneric) {
     }
 
     if (tookDamage && !m_jumpQueued) {
-        int d = getDelayTicks();
-        if (d <= 0) {
-            m_pendingJump = true;
-        } else {
-            m_jumpTicksLeft = d;
+        // Cooldown window is running: this hit only counts (and jumps) if
+        // we haven't already used up the 2 allowed hits within it.
+        if (m_hitsInWindow < kMaxHitsPerWindow) {
+            m_hitsInWindow++;
+
+            // First hit of a fresh window starts the cooldown countdown.
+            if (m_hitsInWindow == 1) {
+                m_cooldownTicksLeft = getCooldownTicks();
+            }
+
+            int d = getDelayTicks();
+            if (d <= 0) {
+                m_pendingJump = true;
+            } else {
+                m_jumpTicksLeft = d;
+            }
         }
+        // else: 3rd+ hit inside the window — counted as damage taken, but no jump.
+
         m_jumpQueued = true;
 
         // Hurt mode has no continuous "still hurt" signal like health does
@@ -94,6 +121,15 @@ void JumpOnDamage::onTick(Event& evGeneric) {
         m_jumpTicksLeft--;
         if (m_jumpTicksLeft == 0) {
             m_pendingJump = true;
+        }
+    }
+
+    // Count down the cooldown window; once it elapses, the hit counter
+    // resets and the next hit is treated as a fresh "first hit" again.
+    if (m_cooldownTicksLeft > 0) {
+        m_cooldownTicksLeft--;
+        if (m_cooldownTicksLeft == 0) {
+            m_hitsInWindow = 0;
         }
     }
 }
