@@ -266,6 +266,8 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(BaseActorRenderer_renderText),
         MVSIG(AppPlatformGDK_releaseMouse),
         MVSIG(LevelRendererCamera_disableParticlesGate),
+        MVSIG(FireOverlayOffset),
+        MVSIG(UIScene_closeOnPlayerHurt),
         MVSIG(Misc::Platform_GameCore),
         MVSIG(Misc::mouseDevice),
     };

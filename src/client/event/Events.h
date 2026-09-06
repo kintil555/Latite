@@ -26,6 +26,7 @@
 #include "events/OutlineSelectionEvent.h"
 #include "events/OverlayColorEvent.h"
 #include "events/PacketReceiveEvent.h"
+#include "events/PlayerHurtScreenCloseEvent.h"
 #include "events/PerspectiveEvent.h"
 #include "events/RendererCleanupEvent.h"
 #include "events/RenderGameEvent.h"

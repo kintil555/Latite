@@ -439,6 +439,30 @@ public:
                                                                     },
                                                                      "80 BD ? ? ? ? ? 0F 85 ? ? ? ? 8B 05 ? ? ? ? 8B 0D ? ? ? ? 65 48 8B 14 25 ? ? ? ? 48 8B 0C CA 3B 81 ? ? ? ? 0F 8F ? ? ? ? 48 8D 0D ? ? ? ? 48 89 8D ? ? ? ? C6 85 ? ? ? ? ? 48 C7 85 ? ? ? ? ? ? ? ? C6 85 ? ? ? ? ? 4C 8D 85 ? ? ? ? 48 89 F2 E8 ? ? ? ? 88 85 ? ? ? ? 48 8B 95"_sig,
                                                                      "LevelRendererCamera::disableParticlesGate" };
+
+    // "movss xmm7, [rbx+X]" load of the fire-overlay's raw offset/opacity
+    // field, immediately multiplied ("mulss xmm7, xmm4") by a scale
+    // constant. Resolves to the start of that movss (5 bytes: F3 0F 10 7B
+    // ?), which AntiFireOverlay overwrites with "xorps xmm7, xmm7" (3
+    // bytes) + NOP padding so the value going into the multiply is always
+    // 0.0f, zeroing the overlay regardless of the constant it's scaled by.
+    inline static SigImpl FireOverlayOffset { [](memory::signature_store&, uintptr_t res) {
+                                                 return res;
+                                             },
+                                              "F3 0F 10 25 ? ? ? ? F3 0F 10 7B ? F3 0F 59 FC"_sig,
+                                              "FireOverlayOffset" };
+
+    // Entry point of the function that decides whether the current UI
+    // screen should be force-closed because the local player just took
+    // damage (e.g. closes chat/forms on hurt). AntiScreenClose detours this
+    // and skips the original call while enabled, so open screens stay open.
+    inline static SigImpl UIScene_closeOnPlayerHurt {
+        [](memory::signature_store&, uintptr_t res) {
+            return res;
+        },
+        "48 83 EC 28 48 8B 49 ? E8 ? ? ? ? 0F B6 40 ? 24 08"_sig,
+        "UIScene::closeOnPlayerHurt"
+    };
 };
 
 // after adding sigs here, add them in latite.cpp

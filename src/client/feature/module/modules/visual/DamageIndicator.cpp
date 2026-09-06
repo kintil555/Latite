@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "DamageIndicator.h"
 #include "client/event/events/RenderLayerEvent.h"
+#include "client/event/events/TickEvent.h"
 #include "mc/common/network/packet/ActorEventPacket.h"
 #include "mc/common/client/game/FontRepository.h"
 #include "mc/common/client/gui/controls/UIControl.h"
@@ -31,6 +32,7 @@ DamageIndicator::DamageIndicator()
 
     listen<AttackEvent>((EventListenerFunc)&DamageIndicator::onAttack);
     listen<PacketReceiveEvent>((EventListenerFunc)&DamageIndicator::onPacketReceive);
+    listen<TickEvent>((EventListenerFunc)&DamageIndicator::onTick);
     listen<RenderLayerEvent>((EventListenerFunc)&DamageIndicator::onRenderLayer);
 }
 
@@ -64,7 +66,27 @@ void DamageIndicator::onPacketReceive(Event& evGeneric) {
 
     m_hasPendingHit = false;
 
-    auto it = m_lastHealth.find(m_pendingRuntimeId);
+    // Don't read health here — HURT_ANIMATION only confirms the hit landed,
+    // it does not guarantee the target's health attribute has been synced
+    // yet (that arrives via a separate packet with no ordering guarantee
+    // relative to this one). Arm a short tick-based wait instead so onTick
+    // can do the diff once the game has actually applied the new value.
+    m_awaitingHealthSync  = true;
+    m_confirmedRuntimeId  = m_pendingRuntimeId;
+    m_healthSyncTicksLeft = 3; // ~150ms at 20 tps, plenty of slack for the sync
+}
+
+void DamageIndicator::onTick(Event&) {
+    if (!m_awaitingHealthSync) return;
+
+    if (m_healthSyncTicksLeft > 0) {
+        --m_healthSyncTicksLeft;
+        return;
+    }
+
+    m_awaitingHealthSync = false;
+
+    auto it = m_lastHealth.find(m_confirmedRuntimeId);
     if (it == m_lastHealth.end()) return; // no pre-hit snapshot, nothing to diff
 
     auto level = SDK::ClientInstance::get()->minecraft->getLevel();
@@ -72,7 +94,7 @@ void DamageIndicator::onPacketReceive(Event& evGeneric) {
 
     // Find the live actor to read post-hit health and current position.
     for (const auto entt : level->getRuntimeActorList()) {
-        if (entt->getRuntimeID() != m_pendingRuntimeId) continue;
+        if (entt->getRuntimeID() != m_confirmedRuntimeId) continue;
 
         auto healthOpt = entt->getHealth();
         if (!healthOpt.has_value()) break;

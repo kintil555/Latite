@@ -9,6 +9,7 @@
 #include "modules/misc/DiscordPresence.h"
 #include "modules/misc/BlockGame.h"
 #include "modules/misc/SkinStealer.h"
+#include "modules/misc/ProximityChat.h"
 // FlipMesh disabled: FlipMeshAsset.h missing from repo, excluded from build in CMakeLists.txt
 // #include "modules/misc/FlipMesh.h"
 
@@ -29,6 +30,7 @@
 #include "modules/game/InventoryWalk.h"
 #include "modules/game/DisableParticles.h"
 #include "modules/game/HideAndSeekCrashWarning.h"
+#include "modules/game/AntiScreenClose.h"
 
 #include "modules/visual/Fullbright.h"
 #include "modules/visual/MotionBlur.h"
@@ -40,6 +42,7 @@
 #include "modules/visual/BlockOutline.h"
 #include "modules/visual/PlayerOverlay.h"
 #include "modules/visual/DamageIndicator.h"
+#include "modules/visual/AntiFireOverlay.h"
 
 #include "modules/hud/FPSCounter.h"
 #include "modules/hud/CPSCounter.h"
@@ -125,11 +128,14 @@ ModuleManager::ModuleManager() {
     this->items.push_back(std::make_shared<FrameTimeDisplay>());
     this->items.push_back(std::make_shared<BlockGame>());
     this->items.push_back(std::make_shared<SkinStealer>());
+    this->items.push_back(std::make_shared<ProximityChat>());
     this->items.push_back(std::make_shared<KillNotification>());
     this->items.push_back(std::make_shared<JumpOnDamage>());
     this->items.push_back(std::make_shared<InventoryWalk>());
     this->items.push_back(std::make_shared<DisableParticles>());
     this->items.push_back(std::make_shared<HideAndSeekCrashWarning>());
+    this->items.push_back(std::make_shared<AntiScreenClose>());
+    this->items.push_back(std::make_shared<AntiFireOverlay>());
     // this->items.push_back(std::make_shared<FlipMesh>()); // disabled, see include comment above
 
     for (auto& mod : items) {

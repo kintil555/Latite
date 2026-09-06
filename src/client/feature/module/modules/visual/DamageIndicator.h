@@ -13,6 +13,7 @@ public:
 
     void onAttack(Event& ev);
     void onPacketReceive(Event& ev);
+    void onTick(Event& ev);
     void onRenderLayer(Event& ev);
 
 private:
@@ -26,6 +27,19 @@ private:
     // the attack actually landed (same confirm pattern as ComboCounter).
     uint64_t m_pendingRuntimeId = 0;
     bool     m_hasPendingHit    = false;
+
+    // HURT_ANIMATION only confirms the hit landed — it does NOT mean the
+    // target's health attribute has been applied yet (that comes from a
+    // separate attribute-sync packet that isn't guaranteed to be processed
+    // before we see the ACTOR_EVENT packet). Reading getHealth() right in
+    // onPacketReceive was reading stale pre-hit health almost every time,
+    // so "dealt" came out <= 0 and the popup got silently dropped. Instead,
+    // once the hit is confirmed we wait a couple of ticks (same approach as
+    // JumpOnDamage's Health Decrease mode) before diffing health, giving
+    // the game time to actually apply the update.
+    bool     m_awaitingHealthSync   = false;
+    uint64_t m_confirmedRuntimeId   = 0;
+    int      m_healthSyncTicksLeft  = 0;
 
     // Last known health per target runtime ID, used to compute the damage
     // delta once a hit is confirmed. Cleared entries are fine to miss —
