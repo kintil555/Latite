@@ -685,6 +685,121 @@ namespace {
         return {};
     }
 
+    // ---------------------------------------------------------------- static cross references
+    // Anchors that need no running hook: a string literal (-> functions that load it) or a function
+    // (-> functions that call/jump to it). Together with `trace` this lets you walk from any in-game text
+    // (e.g. "particles/block_destruct.json") to the code that uses it.
+    constexpr size_t MAX_XREF_FUNCS = 16;
+
+    std::vector<std::pair<const uint8_t*, size_t>> allSections() {
+        std::vector<std::pair<const uint8_t*, size_t>> v;
+        auto& m = mainModule();
+        auto* dos = reinterpret_cast<PIMAGE_DOS_HEADER>(m.base);
+        auto* nt = reinterpret_cast<PIMAGE_NT_HEADERS>(m.base + dos->e_lfanew);
+        auto* sec = IMAGE_FIRST_SECTION(nt);
+        for (WORD i = 0; i < nt->FileHeader.NumberOfSections; i++) {
+            if ((sec[i].Characteristics & IMAGE_SCN_MEM_READ) && !(sec[i].Characteristics & IMAGE_SCN_MEM_DISCARDABLE))
+                v.emplace_back(reinterpret_cast<const uint8_t*>(m.base + sec[i].VirtualAddress),
+                               (size_t)sec[i].Misc.VirtualSize);
+        }
+        return v;
+    }
+
+    // start-of-literal matches (previous byte is NUL); `pat` may be a prefix of the stored string. POD only.
+    size_t findStr(const uint8_t* b, size_t n, const char* pat, size_t len, uintptr_t* out, size_t cap) {
+        size_t cnt = 0;
+        if (n < len) return 0;
+        __try {
+            const uint8_t* x = b;
+            const uint8_t* xmax = b + n - len;
+            while (x <= xmax && cnt < cap) {
+                x = static_cast<const uint8_t*>(std::memchr(x, pat[0], (size_t)(xmax - x) + 1));
+                if (!x) break;
+                if ((x == b || x[-1] == 0) && std::memcmp(x, pat, len) == 0) out[cnt++] = reinterpret_cast<uintptr_t>(x);
+                ++x;
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+        return cnt;
+    }
+
+    // calls = false: `lea reg,[rip+disp32]` sites that load one of `targets`
+    // calls = true : `call/jmp rel32` sites that go to one of `targets`. POD only.
+    size_t scanRefs(const uint8_t* b, size_t n, const uintptr_t* targets, size_t nt, bool calls, uintptr_t* out,
+                    size_t cap) {
+        size_t cnt = 0;
+        __try {
+            const uint8_t* end = b + n;
+            const uint8_t* x = b;
+            while (x < end && cnt < cap) {
+                if (calls) {
+                    const uint8_t* e8 = static_cast<const uint8_t*>(std::memchr(x, 0xE8, (size_t)(end - x)));
+                    const uint8_t* e9 = static_cast<const uint8_t*>(std::memchr(x, 0xE9, (size_t)(end - x)));
+                    x = (e8 && (!e9 || e8 < e9)) ? e8 : e9;
+                    if (!x) break;
+                    if (x + 5 <= end) {
+                        int32_t d;
+                        std::memcpy(&d, x + 1, 4);
+                        uintptr_t t = reinterpret_cast<uintptr_t>(x) + 5 + d;
+                        for (size_t i = 0; i < nt; i++)
+                            if (t == targets[i] && cnt < cap) out[cnt++] = reinterpret_cast<uintptr_t>(x);
+                    }
+                } else {
+                    x = static_cast<const uint8_t*>(std::memchr(x, 0x8D, (size_t)(end - x)));
+                    if (!x) break;
+                    if (x > b && x + 6 <= end && (x[-1] == 0x48 || x[-1] == 0x4C) && (x[1] & 0xC7) == 0x05) {
+                        int32_t d;
+                        std::memcpy(&d, x + 2, 4);
+                        uintptr_t site = reinterpret_cast<uintptr_t>(x) - 1;
+                        uintptr_t t = site + 7 + d;
+                        for (size_t i = 0; i < nt; i++)
+                            if (t == targets[i] && cnt < cap) out[cnt++] = site;
+                    }
+                }
+                ++x;
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+        return cnt;
+    }
+
+    void runAsync(std::function<void()> fn) {
+        pending++;
+        std::thread([fn = std::move(fn)] {
+            try {
+                fn();
+            } catch (...) {
+                Logger::Warn("[SigDump] worker failed");
+            }
+            pending--;
+        }).detach();
+    }
+
+    // lists every site and adds the (deduplicated) containing functions to the job
+    void addSiteFuncs(Job& job, std::string& hdr, std::vector<uintptr_t> sites, const char* what) {
+        std::sort(sites.begin(), sites.end());
+        std::vector<uintptr_t> seen;
+        int k = 0;
+        for (uintptr_t site : sites) {
+            FuncInfo fi = funcInfoFor(site);
+            hdr += std::format("   {} at {}", what, rvaStr(site));
+            if (!fi.start) {
+                hdr += "  (no unwind info, skipped)\n";
+                continue;
+            }
+            hdr += std::format("  in function {}\n", rvaStr(fi.start));
+            if (std::find(seen.begin(), seen.end(), fi.start) != seen.end()) continue;
+            seen.push_back(fi.start);
+            if (job.funcs.size() >= MAX_XREF_FUNCS) continue;
+            job.funcs.push_back(snapshot(std::format("[#{}] {} at {}  ->  function start {}", k++, what, rvaStr(site),
+                                                     rvaStr(fi.start)),
+                                         fi.start, fi.size));
+        }
+        if (seen.size() > MAX_XREF_FUNCS)
+            hdr += std::format("   ... {} functions total, signatures made for the first {}\n", seen.size(),
+                               MAX_XREF_FUNCS);
+    }
+
 } // namespace
 
 // -------------------------------------------------------------------- public API
@@ -861,6 +976,74 @@ std::string SigDump::dumpAt(uintptr_t addrOrRva) {
         job.funcs.push_back(snapshot("[start of the containing function]", fi.start, fi.size));
     spawn(std::move(job));
     return "queued; result goes to " + outDir().string();
+}
+
+std::string SigDump::strRefs(std::string_view text) {
+    if (text.size() < 4) return "string too short (min 4 characters)";
+    runAsync([s = std::string(text)] {
+        Job job;
+        job.title = "functions referencing string \"" + s + "\"";
+        job.tag = "str_" + sanitize(s.substr(0, 32));
+        std::string hdr;
+
+        std::vector<uintptr_t> strs;
+        for (auto const& [b, n] : allSections()) {
+            if (strs.size() >= 8) break;
+            uintptr_t buf[8];
+            size_t c = findStr(b, n, s.data(), s.size(), buf, 8 - strs.size());
+            strs.insert(strs.end(), buf, buf + c);
+        }
+        if (strs.empty()) {
+            job.header = "ASCII string not found in the module (prefix match at the start of a literal).\n";
+            runJob(std::move(job));
+            return;
+        }
+        hdr += "String literal found at:\n";
+        for (auto a : strs)
+            hdr += "   " + rvaStr(a) + "\n";
+        hdr += "\nReferenced (lea) from:\n";
+
+        std::vector<uintptr_t> sites;
+        for (auto const& [b, n] : mainModule().exec) {
+            uintptr_t buf[64];
+            size_t c = scanRefs(b, n, strs.data(), strs.size(), false, buf, 64 - std::min<size_t>(sites.size(), 64));
+            sites.insert(sites.end(), buf, buf + c);
+            if (sites.size() >= 64) break;
+        }
+        if (sites.empty()) hdr += "   <none found: string may be used via a table/pointer or a different instruction>\n";
+        addSiteFuncs(job, hdr, std::move(sites), "lea");
+        hdr += "\nSignatures of those functions:\n";
+        job.header = std::move(hdr);
+        runJob(std::move(job));
+    });
+    return "scanning for string references; result goes to " + outDir().string();
+}
+
+std::string SigDump::xrefs(std::string_view target) {
+    uintptr_t addr = 0;
+    std::string err = resolveTarget(target, addr);
+    if (!err.empty()) return err;
+    FuncInfo fi = funcInfoFor(addr);
+    const uintptr_t start = fi.start ? fi.start : addr;
+    runAsync([start, name = std::string(target)] {
+        Job job;
+        job.title = "callers of " + name + " (" + rvaStr(start) + ")";
+        job.tag = "xref_" + sanitize(name.substr(0, 32));
+        std::string hdr = "Callers (call/jmp rel32) of function " + rvaStr(start) + ":\n";
+        std::vector<uintptr_t> sites;
+        for (auto const& [b, n] : mainModule().exec) {
+            uintptr_t buf[64];
+            size_t c = scanRefs(b, n, &start, 1, true, buf, 64 - std::min<size_t>(sites.size(), 64));
+            sites.insert(sites.end(), buf, buf + c);
+            if (sites.size() >= 64) break;
+        }
+        if (sites.empty()) hdr += "   <none: only reachable via vtable / function pointer - use 'trace' instead>\n";
+        addSiteFuncs(job, hdr, std::move(sites), "call");
+        hdr += "\nSignatures of those functions:\n";
+        job.header = std::move(hdr);
+        runJob(std::move(job));
+    });
+    return "scanning for callers; result goes to " + outDir().string();
 }
 
 void SigDump::waitIdle() {

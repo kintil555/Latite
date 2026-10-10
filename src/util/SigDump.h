@@ -13,6 +13,10 @@
 //  - trace(target, n)    -> hardware breakpoint on ANY game function (signature name or 0xRVA); when the game runs it
 //                           the stack is walked and signatures are dumped for it + its callers (no event/hook needed).
 //                           Example: trace "getHoverName", hover a shulker in the inventory -> tooltip code is a caller.
+//  - strRefs(text)       -> static: finds the string literal in the module and dumps signatures of every function that
+//                           loads it (lea). Anchor from any in-game text, e.g. "particles/block_destruct.json".
+//  - xrefs(target)       -> static: signatures of every function that calls/jumps to the target (rel32 call sites).
+//                           Vtable / pointer calls are invisible here - use trace for those.
 //  - dumpAll()           -> every registered SigImpl: found / NOT FOUND, scan RVA, resolved RVA.
 //  - dumpAt(addr)        -> signature for an arbitrary RVA / address (e.g. from a debugger).
 //  - dumpHooks()         -> every Hook target (RVA + signature from the ORIGINAL, pre-patch bytes).
@@ -33,6 +37,8 @@ namespace SigDump {
     std::string arm(std::string_view eventFilter, int count);
     std::string disarm(); // also stops a running trace
     std::string trace(std::string_view target, int uniqueStacks);
+    std::string strRefs(std::string_view text);
+    std::string xrefs(std::string_view target); // signature name or 0xRVA
     std::string status();
     std::vector<std::string> knownEvents();
 

@@ -4,7 +4,7 @@
 
 SigDumpCommand::SigDumpCommand()
     : Command("sigdump", L"Dumps offsets and signatures when an event fires",
-              "<arm <event|*> [count] | trace <sigName|0xRVA> [stacks] | off | status | events | all | hooks | at <rva|address>>", { "sd" }) {}
+              "<arm <event|*> [count] | trace <sigName|0xRVA> [stacks] | str <text> | xref <sigName|0xRVA> | off | status | events | all | hooks | at <rva|address>>", { "sd" }) {}
 
 bool SigDumpCommand::execute(std::string const label, std::vector<std::string> args) {
     if (args.empty()) return false;
@@ -37,6 +37,19 @@ bool SigDumpCommand::execute(std::string const label, std::vector<std::string> a
             }
         }
         message(SigDump::trace(args[1], count));
+        return true;
+    }
+    if (sub == "str") {
+        if (args.size() < 2) return false;
+        std::string text = args[1];
+        for (size_t i = 2; i < args.size(); i++)
+            text += " " + args[i];
+        message(SigDump::strRefs(text));
+        return true;
+    }
+    if (sub == "xref") {
+        if (args.size() < 2) return false;
+        message(SigDump::xrefs(args[1]));
         return true;
     }
     if (sub == "off") {
