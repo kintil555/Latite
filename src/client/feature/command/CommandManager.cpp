@@ -29,8 +29,8 @@ CommandManager::CommandManager() {
     this->items.push_back(std::make_shared<ConfigCommand>());
 #if LATITE_DEBUG
     this->items.push_back(std::make_shared<SignCommand>());
-    this->items.push_back(std::make_shared<SigDumpCommand>());
 #endif
+    this->items.push_back(std::make_shared<SigDumpCommand>()); // available in release builds too
 }
 
 void CommandManager::refreshLocalization() {
