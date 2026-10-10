@@ -10,6 +10,9 @@
 //  - arm("AttackEvent")  -> the next time that Latite event is dispatched, the call stack is captured, every
 //                           Minecraft.Windows.exe frame is resolved to its function start (via the x64 unwind
 //                           table), and a wildcarded + uniqueness-checked signature is generated for it.
+//  - trace(target, n)    -> hardware breakpoint on ANY game function (signature name or 0xRVA); when the game runs it
+//                           the stack is walked and signatures are dumped for it + its callers (no event/hook needed).
+//                           Example: trace "getHoverName", hover a shulker in the inventory -> tooltip code is a caller.
 //  - dumpAll()           -> every registered SigImpl: found / NOT FOUND, scan RVA, resolved RVA.
 //  - dumpAt(addr)        -> signature for an arbitrary RVA / address (e.g. from a debugger).
 //  - dumpHooks()         -> every Hook target (RVA + signature from the ORIGINAL, pre-patch bytes).
@@ -28,7 +31,8 @@ namespace SigDump {
 
     // Control (return value is a human readable status line for the command to show)
     std::string arm(std::string_view eventFilter, int count);
-    std::string disarm();
+    std::string disarm(); // also stops a running trace
+    std::string trace(std::string_view target, int uniqueStacks);
     std::string status();
     std::vector<std::string> knownEvents();
 

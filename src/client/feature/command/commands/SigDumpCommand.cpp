@@ -4,7 +4,7 @@
 
 SigDumpCommand::SigDumpCommand()
     : Command("sigdump", L"Dumps offsets and signatures when an event fires",
-              "<arm <event|*> [count] | off | status | events | all | hooks | at <rva|address>>", { "sd" }) {}
+              "<arm <event|*> [count] | trace <sigName|0xRVA> [stacks] | off | status | events | all | hooks | at <rva|address>>", { "sd" }) {}
 
 bool SigDumpCommand::execute(std::string const label, std::vector<std::string> args) {
     if (args.empty()) return false;
@@ -24,6 +24,19 @@ bool SigDumpCommand::execute(std::string const label, std::vector<std::string> a
             }
         }
         message(SigDump::arm(args[1], count) + ". Trigger the action in game, result is written to the SigDump folder.");
+        return true;
+    }
+    if (sub == "trace") {
+        if (args.size() < 2) return false;
+        int count = 3;
+        if (args.size() > 2) {
+            try {
+                count = std::stoi(args[2]);
+            } catch (...) {
+                return false;
+            }
+        }
+        message(SigDump::trace(args[1], count));
         return true;
     }
     if (sub == "off") {

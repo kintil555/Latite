@@ -14,6 +14,7 @@
 #include <mutex>
 #include <sstream>
 #include <thread>
+#include <tlhelp32.h>
 
 std::atomic<int> SigDump::armedCount { 0 };
 
@@ -490,6 +491,200 @@ namespace {
         job.funcs = std::move(funcs);
         spawn(std::move(job));
     }
+    // ---------------------------------------------------------------- hardware-breakpoint trace
+    // Breaks (without patching any code) the moment the game executes a chosen function, walks the stack from
+    // the exception context and dumps a signature for that function and each caller. Works for ANY game
+    // function - no Latite event or hook needed (e.g. whatever builds/draws an item tooltip).
+    std::mutex traceMtx;    // protects the fields below
+    std::mutex traceCtlMtx; // serialises start/stop
+    std::atomic<bool> traceActive { false };
+    std::atomic<uintptr_t> traceAddr { 0 }; // stays set after stop so a late in-flight exception is still resumed
+    PVOID traceVeh = nullptr;
+    std::string traceName;
+    int traceWanted = 0;
+    std::vector<uint64_t> traceSeen;
+
+    bool inExec(uintptr_t a) {
+        for (auto const& [b, n] : mainModule().exec)
+            if (a >= reinterpret_cast<uintptr_t>(b) && a < reinterpret_cast<uintptr_t>(b) + n) return true;
+        return false;
+    }
+
+    // POD only (SEH). out[0] = rip, out[1..] = return addresses
+    int unwindStack(const CONTEXT* in, uintptr_t* out, int maxFrames) {
+        CONTEXT c = *in;
+        int n = 0;
+        __try {
+            while (n < maxFrames && c.Rip) {
+                out[n++] = static_cast<uintptr_t>(c.Rip);
+                DWORD64 base = 0;
+                PRUNTIME_FUNCTION rf = RtlLookupFunctionEntry(c.Rip, &base, nullptr);
+                if (!rf) {
+                    c.Rip = *reinterpret_cast<uintptr_t*>(c.Rsp);
+                    c.Rsp += 8;
+                } else {
+                    PVOID handler = nullptr;
+                    DWORD64 frame = 0;
+                    RtlVirtualUnwind(UNW_FLAG_NHANDLER, base, c.Rip, rf, &c, &handler, &frame, nullptr);
+                }
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+        return n;
+    }
+
+    // sets (addr != 0) or clears (addr == 0) execute-breakpoint DR0 on every thread except the helper itself
+    void setDebugRegs(uintptr_t addr) {
+        std::thread([addr] {
+            const DWORD pid = GetCurrentProcessId(), self = GetCurrentThreadId();
+            HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+            if (snap == INVALID_HANDLE_VALUE) return;
+            THREADENTRY32 te {};
+            te.dwSize = sizeof te;
+            for (BOOL ok = Thread32First(snap, &te); ok; ok = Thread32Next(snap, &te)) {
+                if (te.th32OwnerProcessID != pid || te.th32ThreadID == self) continue;
+                HANDLE h = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_SET_CONTEXT, FALSE,
+                                      te.th32ThreadID);
+                if (!h) continue;
+                if (SuspendThread(h) != (DWORD)-1) {
+                    CONTEXT c {};
+                    c.ContextFlags = CONTEXT_DEBUG_REGISTERS;
+                    if (GetThreadContext(h, &c)) {
+                        constexpr DWORD64 mask = 0xF0001; // L0 + RW0/LEN0 (00 = execute, 1 byte)
+                        if (addr) {
+                            c.Dr0 = addr;
+                            c.Dr7 = (c.Dr7 & ~mask) | 1;
+                        } else {
+                            c.Dr0 = 0;
+                            c.Dr7 &= ~mask;
+                        }
+                        c.Dr6 = 0;
+                        SetThreadContext(h, &c);
+                    }
+                    ResumeThread(h);
+                }
+                CloseHandle(h);
+            }
+            CloseHandle(snap);
+        }).join(); // helper thread, so the (possibly calling) game thread gets the registers too
+    }
+
+    void stopTrace() {
+        std::lock_guard lk { traceCtlMtx };
+        traceActive = false;
+        if (!traceVeh) return;
+        setDebugRegs(0);
+        Sleep(50); // let any in-flight breakpoint exception finish
+        RemoveVectoredExceptionHandler(traceVeh);
+        traceVeh = nullptr;
+    }
+
+    void onTraceHit(const CONTEXT& c) {
+        uintptr_t pcs[MAX_MAIN_FRAMES * 3] {};
+        const int n = unwindStack(&c, pcs, static_cast<int>(std::size(pcs)));
+        if (n < 2) return;
+
+        // identify the call path by its first return addresses (ignores the same stack hitting repeatedly)
+        uint64_t hash = 1469598103934665603ull;
+        for (int i = 1; i < n && i <= 8; i++) {
+            hash ^= pcs[i];
+            hash *= 1099511628211ull;
+        }
+
+        int idx = 0;
+        bool finished = false;
+        std::string name;
+        {
+            std::lock_guard lk { traceMtx };
+            if (!traceActive || static_cast<int>(traceSeen.size()) >= traceWanted) return;
+            if (std::find(traceSeen.begin(), traceSeen.end(), hash) != traceSeen.end()) return;
+            traceSeen.push_back(hash);
+            idx = static_cast<int>(traceSeen.size());
+            finished = idx >= traceWanted;
+            name = traceName;
+        }
+
+        Job job;
+        job.title = std::format("trace of {} (unique stack #{})", name, idx);
+        job.tag = std::format("trace_{}_{}", sanitize(name), idx);
+        job.header = std::format("Breakpoint hit when the game entered {}\n"
+                                 "Stack, traced function first, then its callers (innermost first):\n",
+                                 rvaStr(pcs[0]));
+        job.funcs.push_back(snapshot("[traced function]", pcs[0], funcInfoFor(pcs[0]).size));
+        uintptr_t lastFunc = pcs[0];
+        int mainFrames = 0;
+        for (int i = 1; i < n && mainFrames < MAX_MAIN_FRAMES; i++) {
+            if (!inMain(pcs[i])) continue;
+            FuncInfo fi = funcInfoFor(pcs[i] - 1); // -1: return address may sit right after a noreturn call
+            if (!fi.start || fi.start == lastFunc) continue;
+            lastFunc = fi.start;
+            job.funcs.push_back(snapshot(std::format("[stack #{}] return address {}  ->  function start {}",
+                                                     mainFrames, rvaStr(pcs[i]), rvaStr(fi.start)),
+                                         fi.start, fi.size));
+            mainFrames++;
+        }
+
+        if (finished) {
+            traceActive = false;
+            pending++;
+            std::thread([] {
+                stopTrace();
+                pending--;
+            }).detach();
+        }
+        spawn(std::move(job));
+    }
+
+    LONG CALLBACK traceVehHandler(PEXCEPTION_POINTERS ep) {
+        if (ep->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP) return EXCEPTION_CONTINUE_SEARCH;
+        const uintptr_t tgt = traceAddr.load();
+        if (!tgt || reinterpret_cast<uintptr_t>(ep->ExceptionRecord->ExceptionAddress) != tgt)
+            return EXCEPTION_CONTINUE_SEARCH;
+        ep->ContextRecord->EFlags |= 0x10000; // RF: resume past the instruction breakpoint
+        if (traceActive.load()) {
+            thread_local bool busy = false;
+            if (!busy) {
+                busy = true;
+                onTraceHit(*ep->ContextRecord);
+                busy = false;
+            }
+        }
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    // "0x1A2B3C" = RVA/address, otherwise (part of) a registered signature name, e.g. "getHoverName"
+    std::string resolveTarget(std::string_view t, uintptr_t& out) {
+        auto& m = mainModule();
+        std::string s(t);
+        if (s.starts_with("0x") || s.starts_with("0X")) {
+            try {
+                uintptr_t v = std::stoull(s, nullptr, 16);
+                out = v < m.size ? m.base + v : v;
+            } catch (...) {
+                return "invalid hex value";
+            }
+            return inExec(out) ? std::string() : std::string("address is not in an executable section of Minecraft.Windows.exe");
+        }
+        const std::string q = lower(s);
+        std::vector<memory::signature_store*> exact, part;
+        for (auto* r : memory::signature_store::registry()) {
+            if (!r->result || !inExec(r->result)) continue;
+            std::string n = lower(std::string(r->name));
+            if (n == q) exact.push_back(r);
+            else if (n.find(q) != std::string::npos) part.push_back(r);
+        }
+        auto& c = !exact.empty() ? exact : part;
+        if (c.empty()) return "no resolved signature matches '" + s + "' (use '.sigdump all' to list names, or pass 0x<rva>)";
+        if (c.size() > 1) {
+            std::string l = "ambiguous, matches:";
+            for (size_t i = 0; i < c.size() && i < 8; i++)
+                l += " " + std::string(c[i]->name) + ";";
+            return l;
+        }
+        out = c[0]->result;
+        return {};
+    }
+
 } // namespace
 
 // -------------------------------------------------------------------- public API
@@ -534,17 +729,49 @@ std::string SigDump::arm(std::string_view eventFilter, int count) {
 }
 
 std::string SigDump::disarm() {
+    stopTrace();
     std::lock_guard lk { armMtx };
     armRemaining = 0;
     armedCount = 0;
     return "disarmed";
 }
 
+std::string SigDump::trace(std::string_view target, int uniqueStacks) {
+    uintptr_t addr = 0;
+    std::string err = resolveTarget(target, addr);
+    if (!err.empty()) return err;
+    stopTrace(); // replace a running trace
+    {
+        std::lock_guard ck { traceCtlMtx };
+        {
+            std::lock_guard lk { traceMtx };
+            traceName = std::string(target);
+            traceWanted = std::max(1, uniqueStacks);
+            traceSeen.clear();
+            traceAddr = addr;
+            traceActive = true;
+        }
+        if (!traceVeh) traceVeh = AddVectoredExceptionHandler(1, traceVehHandler);
+        if (!traceVeh) {
+            traceActive = false;
+            return "failed to install exception handler";
+        }
+        setDebugRegs(addr);
+    }
+    return std::format("tracing {} ({}): trigger it in game; stops after {} unique stack(s) or on '.sigdump off'",
+                       std::string(target), rvaStr(addr), std::max(1, uniqueStacks));
+}
+
 std::string SigDump::status() {
     std::lock_guard lk { armMtx };
-    return std::format("{} | pending jobs: {} | output: {}",
+    std::string tr;
+    if (traceActive) {
+        std::lock_guard tk { traceMtx };
+        tr = std::format(" | tracing '{}' ({}/{} stacks)", traceName, traceSeen.size(), traceWanted);
+    }
+    return std::format("{}{} | pending jobs: {} | output: {}",
                        armRemaining > 0 ? std::format("armed for '{}' ({} left)", armFilter, armRemaining) : "not armed",
-                       pending.load(), outDir().string());
+                       tr, pending.load(), outDir().string());
 }
 
 std::vector<std::string> SigDump::knownEvents() {
