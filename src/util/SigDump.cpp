@@ -740,7 +740,8 @@ namespace {
         return v;
     }
 
-    // start-of-literal matches (previous byte is NUL); `pat` may be a prefix of the stored string. POD only.
+    // every occurrence of `pat` (compilers tail-merge string literals, so a reference can point into the middle of a
+    // longer stored string). POD only.
     size_t findStr(const uint8_t* b, size_t n, const char* pat, size_t len, uintptr_t* out, size_t cap) {
         size_t cnt = 0;
         if (n < len) return 0;
@@ -750,7 +751,7 @@ namespace {
             while (x <= xmax && cnt < cap) {
                 x = static_cast<const uint8_t*>(std::memchr(x, pat[0], (size_t)(xmax - x) + 1));
                 if (!x) break;
-                if ((x == b || x[-1] == 0) && std::memcmp(x, pat, len) == 0) out[cnt++] = reinterpret_cast<uintptr_t>(x);
+                if (std::memcmp(x, pat, len) == 0) out[cnt++] = reinterpret_cast<uintptr_t>(x); // tail-merged literals don't start after a NUL
                 ++x;
             }
         } __except (EXCEPTION_EXECUTE_HANDLER) {
@@ -1035,19 +1036,35 @@ std::string SigDump::strRefs(std::string_view text) {
         job.tag = "str_" + sanitize(s.substr(0, 32));
         std::string hdr;
 
+        auto secs = allSections();
+        size_t scanned = 0;
+        for (auto const& sec : secs)
+            scanned += sec.second;
+        std::string wide;
+        for (char ch : s) {
+            wide += ch;
+            wide += '\0';
+        }
         std::vector<uintptr_t> strs;
-        for (auto const& [b, n] : allSections()) {
-            if (strs.size() >= 8) break;
-            uintptr_t buf[8];
-            size_t c = findStr(b, n, s.data(), s.size(), buf, 8 - strs.size());
-            strs.insert(strs.end(), buf, buf + c);
+        bool isWide = false;
+        for (int pass = 0; pass < 2 && strs.empty(); pass++) {
+            const std::string& pat = pass == 0 ? s : wide;
+            isWide = pass == 1;
+            for (auto const& [b, n] : secs) {
+                if (strs.size() >= 32) break;
+                uintptr_t buf[32];
+                size_t c = findStr(b, n, pat.data(), pat.size(), buf, 32 - strs.size());
+                strs.insert(strs.end(), buf, buf + c);
+            }
         }
         if (strs.empty()) {
-            job.header = "ASCII string not found in the module (prefix match at the start of a literal).\n";
+            job.header = std::format("String not found as ASCII or UTF-16 ({} sections, {} MB scanned).\n"
+                                     "The code may build the path from parts - retry with a fragment, e.g. 'block_destruct'.\n",
+                                     secs.size(), scanned >> 20);
             runJob(std::move(job));
             return;
         }
-        hdr += "String literal found at:\n";
+        hdr += std::format("String found ({}) at:\n", isWide ? "UTF-16" : "ASCII");
         for (auto a : strs)
             hdr += "   " + rvaStr(a) + "\n";
         hdr += "\nReferenced (lea) from:\n";
