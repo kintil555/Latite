@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "util/SigDump.h"
 // LatiteRecode.cpp : Defines the entry point for the application.
 //
 #include <cstdint>
@@ -383,6 +384,9 @@ BOOL WINAPI DllMainImpl(HINSTANCE hinstDLL, // handle to DLL module
         if (!Latite::get().isEjectReadyForRenderThread()) {
             Latite::getConfigManager().saveCurrentConfig();
         }
+
+        SigDump::disarm();
+        SigDump::waitIdle();
 
         Latite::getKeyboard().~Keyboard();
         Latite::getModuleManager().~ModuleManager();

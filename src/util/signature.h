@@ -3,6 +3,8 @@
 #include <string>
 #include <functional>
 #include <stdexcept>
+#include <vector>
+#include <optional>
 #include <mnemosyne/scan/signature.hpp>
 
 namespace memory {
@@ -19,27 +21,26 @@ namespace memory {
         std::string_view name;
         std::optional<mnem::signature> signature;
 
+        // every signature with a pattern registers itself here (used by SigDump)
+        static std::vector<signature_store*>& registry() {
+            static std::vector<signature_store*> r;
+            return r;
+        }
+
     protected:
         std::function<uintptr_t(signature_store& store, uintptr_t res)> on_resolve;
 
     public:
         signature_store(const char* mod, decltype(on_resolve) onResolve, std::optional<mnem::signature> sig,
-                        std::string_view
-#ifdef API_NAMES
-                            name
-#endif
-                        )
-            :
-#ifdef API_NAMES
-            name(name)
-            ,
-#endif
-            signature(sig)
+                        std::string_view name)
+            : name(name)
+            , signature(sig)
             , on_resolve(onResolve)
             , mod(mod) {
             if (!mod) {
                 // throw std::runtime_error("mod is unspecified");
             }
+            if (sig.has_value()) registry().push_back(this);
         };
         bool resolve();
 

@@ -5,6 +5,17 @@ CPMAddPackage("gh:TsudaKageyu/minhook@1.3.4")
 CPMAddPackage("gh:brampedgex/mnemosyne#48078d302fa3ba9e22b80ca69eadf27811caf361")
 CPMAddPackage("gh:nlohmann/json@3.12.0")
 CPMAddPackage("gh:BasedInc/libhat@0.6.0")
+CPMAddPackage(
+    NAME Zydis
+    GITHUB_REPOSITORY zyantific/zydis
+    GIT_TAG v4.1.0
+    OPTIONS
+        "ZYDIS_BUILD_TOOLS OFF"
+        "ZYDIS_BUILD_EXAMPLES OFF"
+        "ZYDIS_BUILD_DOXYGEN OFF"
+        "ZYDIS_BUILD_SHARED_LIB OFF"
+        "ZYCORE_BUILD_SHARED_LIB OFF"
+)
 CPMAddPackage("gh:skypjack/entt#fe8d7d78c4823e8a66a050bf86f5c6318cf76ce7")
 CPMAddPackage(
     NAME SDL
@@ -56,6 +67,7 @@ target_link_libraries(Latite PRIVATE
 	mnemosyne
 	nlohmann_json
 	libhat::libhat
+	Zydis
 	EnTT::EnTT
     SDL3::SDL3-static
 )

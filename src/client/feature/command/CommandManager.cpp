@@ -7,6 +7,7 @@
 
 // Commands
 #include "commands/TestCommand.h"
+#include "commands/SigDumpCommand.h"
 #include "commands/HelpCommand.h"
 #include "commands/EjectCommand.h"
 #include "commands/ToggleCommand.h"
@@ -28,6 +29,7 @@ CommandManager::CommandManager() {
     this->items.push_back(std::make_shared<ConfigCommand>());
 #if LATITE_DEBUG
     this->items.push_back(std::make_shared<SignCommand>());
+    this->items.push_back(std::make_shared<SigDumpCommand>());
 #endif
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "client/event/Event.h"
 #include "client/event/Listener.h"
+#include "util/SigDump.h"
 #include <bit>
 #include <concepts>
 #include <cstddef>
@@ -23,6 +24,10 @@ public:
         requires std::derived_from<std::remove_reference_t<T>, Event>
     {
         using EventType = std::remove_reference_t<T>;
+
+        // SigDump probe: a single relaxed load unless `.sigdump arm` was used
+        if (SigDump::armedCount.load(std::memory_order_relaxed) > 0) SigDump::onEvent(__FUNCSIG__);
+
         std::vector<Registration> snapshot;
 
         {

@@ -3,6 +3,7 @@
 #include "util/logger.h"
 #include "MinHook.h"
 #include "vhook/vtable_hook.h"
+#include "util/SigDump.h"
 
 Hook::Hook(uintptr_t targetAddress, void* detourFunc, std::string const& hookName, bool tableSwap)
     : funcPtr(nullptr)
@@ -17,6 +18,8 @@ Hook::Hook(uintptr_t targetAddress, void* detourFunc, std::string const& hookNam
 #endif
     tableSwapHook(tableSwap)
     , target(targetAddress) {
+
+    SigDump::registerHook(targetAddress, detourFunc, hookName, tableSwap);
 
     if (tableSwap) {
         auto res = vh::hook(reinterpret_cast<LPVOID*>(targetAddress), detourFunc, &this->funcPtr);
