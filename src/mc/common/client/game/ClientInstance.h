@@ -6,19 +6,19 @@
 namespace SDK {
     class ClientInstance {
     public:
-        CLASS_FIELD(class MinecraftGame*, minecraftGame, 0x1A0);
-        CLASS_FIELD(class Minecraft*, minecraft, 0x1A8);
-        CLASS_FIELD(class LevelRenderer*, levelRenderer, 0x1B8);
-        CLASS_FIELD(class PacketSender*, packetSender, 0x1C8);
-        CLASS_FIELD(class ClientInputHandler*, inputHandler, 0x1D8);
-        CLASS_FIELD(struct Vec2, cursorPos, 0x580);
+        CLASS_FIELD(class MinecraftGame*, minecraftGame, 0x1A8);
+        CLASS_FIELD(class Minecraft*, minecraft, 0x1B0);
+        CLASS_FIELD(class LevelRenderer*, levelRenderer, 0x1C0);
+        CLASS_FIELD(class PacketSender*, packetSender, 0x1D0);
+        CLASS_FIELD(class ClientInputHandler*, inputHandler, 0x1E0);
+        CLASS_FIELD(struct Vec2, cursorPos, 0x588);
 
         static ClientInstance* get();
         class BlockSource* getRegion();
         class LocalPlayer* getLocalPlayer();
         class GuiData* getGuiData();
         class Options* getOptions();
-        NonOwnerPointer<class SoundPlayerInterface> getSoundPlayer();
+        NonOwnerPointer<class SoundPlayerInterface> getSoundEngine();
         class ResourcePackManager& getResourcePackManager();
         // class ClientHMDState* getClientHMDState(); Removed in 1.21.111
 

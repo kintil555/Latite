@@ -89,6 +89,22 @@ namespace {
         FreeLibraryAndExitThread(static_cast<HMODULE>(module), 0);
     }
 
+    void centerCursorInGameWindow() {
+        auto* gameCore = SDK::GameCore::get();
+        if (!gameCore || !gameCore->hwnd) return;
+
+        RECT clientRect {};
+        if (!GetClientRect(gameCore->hwnd, &clientRect)) return;
+
+        POINT center {
+            (clientRect.left + clientRect.right) / 2,
+            (clientRect.top + clientRect.bottom) / 2,
+        };
+        if (!ClientToScreen(gameCore->hwnd, &center)) return;
+
+        SetCursorPos(center.x, center.y);
+    }
+
 }
 
 #define MVSIG(...) \
@@ -166,9 +182,6 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         const auto minor = LOWORD(fileInfo->dwFileVersionMS);
         const auto build = HIWORD(fileInfo->dwFileVersionLS);
 
-        // TODO(1.26.50): Remove the pre-1.26.44 compatibility flag and its guarded workarounds.
-        if (build < 44) Latite::get().tmp2640Is4240 = true;
-
         Latite::get().gameVersion = std::format("{}.{}.{}", major, minor, build);
     }
 
@@ -226,15 +239,14 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(MinecraftGame_onDeviceLost),
         MVSIG(RenderController_getOverlayColor),
         MVSIG(ScreenView_setupAndRender),
-        MVSIG(KeyMap),
         MVSIG(MinecraftGame__update),
+        MVSIG(AppPlatform_GameCorePC_pickImage),
         MVSIG(GpuInfo),
         MVSIG(RakPeer_GetAveragePing),
         MVSIG(ClientInputUpdateSystemInternal_tickUpdateClientInput),
         MVSIG(LocalPlayer_applyTurnDelta),
         MVSIG(ItemStackBase_getHoverName),
         MVSIG(I18n_getI18n),
-        MVSIG(ItemStack_ItemStackBlock),
         MVSIG(ItemStackVtable),
         MVSIG(ItemStackBase_destructor),
         MVSIG(Vtable::Level),
@@ -271,11 +283,6 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
         MVSIG(Misc::Platform_GameCore),
         MVSIG(Misc::mouseDevice),
     };
-
-    // TODO(1.26.50): Remove the custom Windows 10 picker signature along with its compatibility hook.
-    if (Latite::get().tmp2640Is4240) {
-        sigList.push_back(MVSIG(AppPlatform_GameCorePC_pickImage));
-    }
 
     new (configMgrBuf) ConfigManager();
     if (!Latite::getConfigManager().loadMaster()) {
@@ -321,7 +328,7 @@ DWORD __stdcall startThreadImpl(HINSTANCE dll) {
     MH_Initialize();
     new (hooks) LatiteHooks();
 
-    new (keyboardBuf) Keyboard(reinterpret_cast<int*>(Signatures::KeyMap.result));
+    new (keyboardBuf) Keyboard();
 
     Logger::Info("Waiting for game to load..");
 
@@ -961,11 +968,7 @@ void Latite::onUpdate(Event& evGeneric) {
 
     if (auto* client = SDK::ClientInstance::get()) {
         if (std::get<BoolValue>(centerCursorMenus) && client->minecraftGame && client->minecraftGame->isCursorGrabbed()) {
-            if (auto* core = SDK::GameCore::get()) {
-                RECT r = { 0, 0, 0, 0 };
-                GetClientRect(core->hwnd, &r);
-                SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2);
-            }
+            centerCursorInGameWindow();
         }
     }
 
@@ -1126,9 +1129,7 @@ void Latite::onTick(Event& ev) {
 
 void Latite::onMouseRelease(Event& ev) {
     if (std::get<BoolValue>(centerCursorMenus)) {
-        RECT r = { 0, 0, 0, 0 };
-        GetClientRect(SDK::GameCore::get()->hwnd, &r);
-        SetCursorPos((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        centerCursorInGameWindow();
     }
 }
 

@@ -31,18 +31,18 @@ SDK::LocalPlayer* SDK::ClientInstance::getLocalPlayer() {
 }
 
 SDK::GuiData* SDK::ClientInstance::getGuiData() {
-    return hat::member_at<GuiData*>(this, 0x648);
+    return hat::member_at<GuiData*>(this, 0x650);
 }
 
 SDK::Options* SDK::ClientInstance::getOptions() {
-    return hat::member_at<Options*>(this, 0xD78);
+    return hat::member_at<Options*>(this, 0xE10);
 }
 
-SDK::NonOwnerPointer<SDK::SoundPlayerInterface> SDK::ClientInstance::getSoundPlayer() {
-    NonOwnerPointer<SoundPlayerInterface> soundPlayer;
+SDK::NonOwnerPointer<SDK::SoundPlayerInterface> SDK::ClientInstance::getSoundEngine() {
+    NonOwnerPointer<SoundPlayerInterface> soundEngine;
 
-    memory::callVirtual<void, NonOwnerPointer<SoundPlayerInterface>&>(this, 0x13B, soundPlayer);
-    return soundPlayer;
+    memory::callVirtual<void, NonOwnerPointer<SoundPlayerInterface>&>(this, 0x13C, soundEngine);
+    return soundEngine;
 }
 
 SDK::ResourcePackManager& SDK::ClientInstance::getResourcePackManager() {
