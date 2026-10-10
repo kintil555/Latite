@@ -17,6 +17,9 @@
 //                           loads it (lea). Anchor from any in-game text, e.g. "particles/block_destruct.json".
 //  - xrefs(target)       -> static: signatures of every function that calls/jumps to the target (rel32 call sites).
 //                           Vtable / pointer calls are invisible here - use trace for those.
+//  - vrefs(target)       -> static: finds vtable slots that point at the function (vtable RVA, slot index, RTTI class
+//                           name) - covers the virtual calls that xrefs cannot see.
+//                           trace also prints rcx/rdx/r8/r9 (+ first 64 bytes of pointers, RTTI class of objects).
 //  - dumpAll()           -> every registered SigImpl: found / NOT FOUND, scan RVA, resolved RVA.
 //  - dumpAt(addr)        -> signature for an arbitrary RVA / address (e.g. from a debugger).
 //  - dumpHooks()         -> every Hook target (RVA + signature from the ORIGINAL, pre-patch bytes).
@@ -39,6 +42,7 @@ namespace SigDump {
     std::string trace(std::string_view target, int uniqueStacks);
     std::string strRefs(std::string_view text);
     std::string xrefs(std::string_view target); // signature name or 0xRVA
+    std::string vrefs(std::string_view target);
     std::string status();
     std::vector<std::string> knownEvents();
 

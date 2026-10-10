@@ -579,6 +579,38 @@ namespace {
         traceVeh = nullptr;
     }
 
+    // MSVC x64 RTTI: vtable[-1] -> CompleteObjectLocator -> TypeDescriptor name (".?AVItemStack@@")
+    std::string rttiName(uintptr_t vtbl) {
+        uintptr_t colp = 0;
+        if (!inMain(vtbl) || !safeCopy(&colp, reinterpret_cast<void*>(vtbl - 8), 8) || !inMain(colp)) return {};
+        uint32_t col[4] {}; // signature(=1), offset, cdOffset, pTypeDescriptor (image-relative)
+        if (!safeCopy(col, reinterpret_cast<void*>(colp), sizeof col)) return {};
+        if (col[0] != 1 || col[3] == 0 || col[3] >= mainModule().size) return {};
+        char buf[129] {};
+        if (!safeCopy(buf, reinterpret_cast<void*>(mainModule().base + col[3] + 16), 128)) return {};
+        std::string n(buf);
+        return n.starts_with(".?A") ? n : std::string();
+    }
+
+    std::string describeArg(const char* name, uint64_t v) {
+        std::string s = std::format("   {:<3} = 0x{:X}", name, v);
+        if (inMain(v)) return s + "  (" + rvaStr(v) + ")\n";
+        if (v < 0x10000 || v > 0x00007FFFFFFFFFFFull) return s + "\n";
+        uint64_t q[8] {};
+        if (!safeCopy(q, reinterpret_cast<void*>(v), sizeof q)) return s + "  (value, not a readable pointer)\n";
+        s += "  -> first 64 bytes:\n";
+        for (int i = 0; i < 8; i++) {
+            s += std::format("        +0x{:02X}: 0x{:016X}", i * 8, q[i]);
+            if (inMain(q[i])) s += "  <- " + rvaStr(q[i]);
+            s += "\n";
+        }
+        if (inMain(q[0])) {
+            std::string cls = rttiName(static_cast<uintptr_t>(q[0]));
+            if (!cls.empty()) s += "        object class (RTTI from vtable at +0x00): " + cls + "\n";
+        }
+        return s;
+    }
+
     void onTraceHit(const CONTEXT& c) {
         uintptr_t pcs[MAX_MAIN_FRAMES * 3] {};
         const int n = unwindStack(&c, pcs, static_cast<int>(std::size(pcs)));
@@ -610,6 +642,9 @@ namespace {
         job.header = std::format("Breakpoint hit when the game entered {}\n"
                                  "Stack, traced function first, then its callers (innermost first):\n",
                                  rvaStr(pcs[0]));
+        job.header += "Arguments at entry (Windows x64: rcx, rdx, r8, r9 - an object's first qword is usually its vtable):\n";
+        job.header += describeArg("rcx", c.Rcx) + describeArg("rdx", c.Rdx) + describeArg("r8", c.R8) +
+                      describeArg("r9", c.R9) + "\n";
         job.funcs.push_back(snapshot("[traced function]", pcs[0], funcInfoFor(pcs[0]).size));
         uintptr_t lastFunc = pcs[0];
         int mainFrames = 0;
@@ -798,6 +833,20 @@ namespace {
         if (seen.size() > MAX_XREF_FUNCS)
             hdr += std::format("   ... {} functions total, signatures made for the first {}\n", seen.size(),
                                MAX_XREF_FUNCS);
+    }
+
+    // 8-byte-aligned qwords equal to `target` (vtable slots / function pointer tables). POD only.
+    size_t scanQwords(const uint8_t* b, size_t n, uint64_t target, uintptr_t* out, size_t cap) {
+        size_t cnt = 0;
+        __try {
+            for (size_t i = 0; i + 8 <= n && cnt < cap; i += 8) {
+                uint64_t q;
+                std::memcpy(&q, b + i, 8);
+                if (q == target) out[cnt++] = reinterpret_cast<uintptr_t>(b + i);
+            }
+        } __except (EXCEPTION_EXECUTE_HANDLER) {
+        }
+        return cnt;
     }
 
 } // namespace
@@ -1044,6 +1093,46 @@ std::string SigDump::xrefs(std::string_view target) {
         runJob(std::move(job));
     });
     return "scanning for callers; result goes to " + outDir().string();
+}
+
+std::string SigDump::vrefs(std::string_view target) {
+    uintptr_t addr = 0;
+    std::string err = resolveTarget(target, addr);
+    if (!err.empty()) return err;
+    FuncInfo fi = funcInfoFor(addr);
+    const uintptr_t start = fi.start ? fi.start : addr;
+    runAsync([start, size = fi.size, name = std::string(target)] {
+        Job job;
+        job.title = "vtable slots pointing to " + name + " (" + rvaStr(start) + ")";
+        job.tag = "vref_" + sanitize(name.substr(0, 32));
+        std::string hdr = "Vtable / pointer-table slots holding function " + rvaStr(start) + ":\n";
+
+        std::vector<uintptr_t> hits;
+        for (auto const& [b, n] : allSections()) {
+            uintptr_t buf[32];
+            size_t c = scanQwords(b, n, start, buf, 32 - std::min<size_t>(hits.size(), 32));
+            hits.insert(hits.end(), buf, buf + c);
+            if (hits.size() >= 32) break;
+        }
+        if (hits.empty()) hdr += "   <no table slot points to it: it is only reached by direct calls - use 'xref'>\n";
+        for (uintptr_t h : hits) {
+            uintptr_t v = h; // walk back to the start of the table (entries are code pointers)
+            for (int i = 0; i < 1024; i++) {
+                uintptr_t prev = 0;
+                if (!safeCopy(&prev, reinterpret_cast<void*>(v - 8), 8) || !inExec(prev)) break;
+                v -= 8;
+            }
+            hdr += std::format("   slot at {}  ->  table {}  index {}", rvaStr(h), rvaStr(v), (h - v) / 8);
+            std::string cls = rttiName(v);
+            if (!cls.empty()) hdr += "  class " + cls;
+            hdr += "\n";
+        }
+        hdr += "\nSignature of the function itself:\n";
+        job.header = std::move(hdr);
+        job.funcs.push_back(snapshot("[target function]", start, size));
+        runJob(std::move(job));
+    });
+    return "scanning for vtable slots; result goes to " + outDir().string();
 }
 
 void SigDump::waitIdle() {
