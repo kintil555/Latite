@@ -8,6 +8,7 @@
 // Commands
 #include "commands/TestCommand.h"
 #include "commands/SigDumpCommand.h"
+#include "commands/SkinProbeCommand.h"
 #include "commands/HelpCommand.h"
 #include "commands/EjectCommand.h"
 #include "commands/ToggleCommand.h"
@@ -31,6 +32,7 @@ CommandManager::CommandManager() {
     this->items.push_back(std::make_shared<SignCommand>());
 #endif
     this->items.push_back(std::make_shared<SigDumpCommand>()); // available in release builds too
+    this->items.push_back(std::make_shared<SkinProbeCommand>());
 }
 
 void CommandManager::refreshLocalization() {
