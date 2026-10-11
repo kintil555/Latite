@@ -52,10 +52,10 @@ jobs:
           # CMakeLists.txt sets OUTPUT_NAME_RELEASE/PDB_NAME_RELEASE per branch:
           # "Latite" on master, "LatiteJoD" on jod-only -- keep this in sync with
           # that file if either name ever changes.
-          if [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            echo "name=Latite" >> "$GITHUB_OUTPUT"
-          else
+          if [ "${{ github.ref }}" = "refs/heads/jod-only" ]; then
             echo "name=LatiteJoD" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=Latite" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Compute next version tag
