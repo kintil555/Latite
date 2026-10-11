@@ -632,12 +632,12 @@ Color util::HSVToColor(HSV const& hsv) {
     return color;
 }
 
-Vec4 util::RotToQuaternion(Vec2 const& rot) {
+Vec4 util::RotToQuaternion(Vec2 const& rot, float rollDegrees) {
     constexpr float invRadDegrees = pi_f / 180.f;
 
     float pitch = rot.x * invRadDegrees;
     float yaw = rot.y * invRadDegrees;
-    float roll = 0.f;
+    float roll = rollDegrees * invRadDegrees;
 
     float cx = std::cos(pitch * 0.5f);
     float sx = std::sin(pitch * 0.5f);

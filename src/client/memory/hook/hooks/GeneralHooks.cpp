@@ -408,8 +408,9 @@ void GenericHooks::hkUpdatePlayer(SDK::CameraComponent* obj, void* a, void* b) {
     auto oAngles = util::QuaternionToRot(obj->lookAngles);
     auto origAngles = obj->lookAngles;
 
-    if (ev.getNewRot()) {
-        obj->lookAngles = util::RotToQuaternion(*ev.getNewRot());
+    if (ev.getNewRot() || ev.getNewRoll()) {
+        Vec2 rot = ev.getNewRot() ? *ev.getNewRot() : oAngles;
+        obj->lookAngles = util::RotToQuaternion(rot, ev.getNewRoll().value_or(0.f));
         UpdatePlayerHook->oFunc<decltype(&hkUpdatePlayer)>()(obj, a, b);
         obj->lookAngles = origAngles;
         return;

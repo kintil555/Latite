@@ -49,7 +49,7 @@ namespace util {
 
     extern struct HSV ColorToHSV(Color const& color);
     extern Color HSVToColor(HSV const& hsv);
-    extern Vec4 RotToQuaternion(Vec2 const& rotatoin);
+    extern Vec4 RotToQuaternion(Vec2 const& rotatoin, float rollDegrees = 0.f);
     extern Vec2 QuaternionToRot(const Vec4& quat);
 
     extern void KeepInBounds(d2d::Rect& targ, d2d::Rect const& bounds);
